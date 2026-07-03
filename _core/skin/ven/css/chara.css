@@ -1,0 +1,974 @@
+@charset "utf-8";
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-xx.png);
+  @media screen and (width <= 735px){
+    background-size: auto, 70%;
+  }
+}
+/* // Layout
+---------------------------------------------------------------------------------------------------- */
+@media screen and (width >= 1400px){
+  body {
+    grid-template-columns: minmax(0, 1fr) minmax(auto, 1800px) minmax(0, 1fr);
+  }
+  header nav {
+    max-width: 1800px;
+  }
+  article{
+    max-width: 1760px;
+    display: grid;
+    grid-gap: 0 1.2rem;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    padding: 0 1.2rem;
+    position: relative;
+  }
+  #area-name, #tags {
+    grid-column: span 2;
+  }
+  .column-status{
+    grid-row: span 2;
+  }
+  #area-battle {
+    grid-row: span 1;
+  }
+  #free-note {
+    grid-column: 1;
+  }
+  #enc-bonus {
+    grid-column: 2;
+    align-self: end;
+  }
+}
+/* // Font
+---------------------------------------------------------------------------------------------------- */
+#history {
+  font-family: "Kosugi","Arial",var(--base-font-family-jp);
+}
+#character-name,
+.words {
+  font-family: var(--base-font-family-min);
+}
+#character-name rt {
+  font-family: Arial,var(--base-font-family-min);
+}
+
+/* // Area-Status
+---------------------------------------------------------------------------------------------------- */
+#area-status {
+  /* min-height: 56.7rem; */
+  display: grid;
+  grid-gap: var(--box-v-gap) var(--box-h-gap);
+  
+  /* 【変更箇所：パーソナルデータの固定幅設定】
+     左から順に [PE1の幅] [PE2の幅] [PE3の幅] [IMG（残りすべて）] となっています。
+     ここの数値を変更することで、各ボックスの横幅を固定できます。
+     ※PE1（#personal）の中身は自動的にこの幅の「半分ずつ」に等分されます。 */
+  /* grid-template-columns: 18rem 7rem 16rem 1fr;  */
+  /* grid-template-columns: 1.8fr 0.7fr 1.8fr 2.8fr; */
+  grid-template-columns: 1.25fr 0.55fr 1.1fr 2.115fr;
+ grid-template-rows: auto auto auto auto;
+  
+  
+  /* grid-template-rows: auto max-content auto; */
+  grid-template-areas:
+    "PE1 PE2 PE3 IMG"
+    /* "STT STT EBS IMG" */
+    "STT-EBS STT-EBS STT-EBS IMG"
+    "OAF OAF OAF IMG"
+    "LST LST LST IMG"
+    "BDY BDY BDY IMG"
+  ;
+
+  @media screen and (width <= 767px){
+    min-height: 0%;
+    grid-gap: .5rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "PE1 IMG"
+      "PE2 IMG"
+      "PE3 IMG"
+      "STT-EBS IMG"
+      "BDY IMG"
+      "OAF OAF"
+      "LST LST"
+    ;
+  }
+  
+  /* スマホ・タブレット等の画面が狭い時のレスポンシブ対応 */
+  @media screen and (width <= 735px){
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "PE1 IMG"
+      "PE2 IMG"
+      "PE3 IMG"
+      "STT-EBS IMG"
+      "BDY IMG"
+      "OAF OAF"
+      "LST LST"
+    ;
+  }
+
+  
+  
+  /* グリッドエリアの割り当て */
+  #image-none,
+  #image                 { grid-area: IMG; }
+  #personal              { grid-area: PE1; }
+  #personal2             { grid-area: PE2; }
+  #personal3             { grid-area: PE3; }
+  #initial-values        { grid-area: STT; }
+  #permanent-bs          { grid-area: EBS; } 
+  #origin-adept-section  { grid-area: OAF; }
+  #lifestyle             { grid-area: LST; }
+  #stt-ebs-container     { grid-area: STT-EBS; }
+  #body-arrange          { grid-area: BDY; }
+}
+
+#area-status dd:empty::before,
+#area-status td:empty::before {
+  content: ' ';
+}
+
+/* パーソナルデータ共通の内部構造 */
+:is(#personal, #personal2, #personal3) dl {
+  display: grid;
+  grid-template-rows: max-content 1fr;
+  > dd {
+    min-width: 0;
+    line-height: 1;
+    align-self: center;
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+}
+
+/* パーソナルデータ1 (2列 × 2行) */
+:is(#personal, #initial-values) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  
+  > dl:nth-child(n+3) {
+    border-top-width: 1px;
+  }
+  > dl:not(:nth-child(2n+1)) {
+    border-left-width: 1px;
+    border-left-style: dotted;
+  }
+}
+/* パーソナルデータ1 & 初期数値 (2列 × 2行 / 2列 × 1行) */
+
+
+
+/* パーソナルデータ2 & 3 (1列 × 2行) */
+#personal2, #personal3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  
+  > dl:nth-child(n+2) {
+    border-top-width: 1px;
+  }
+}
+
+/* 永続BSボックスの微調整 */
+#permanent-bs p {
+  padding: 0.5rem;
+  align-self: center;
+  word-break: break-all;
+}
+
+#connection{
+  margin-top: var(--box-v-gap);
+}
+
+/* Lifepath */
+#lifestyle {
+  align-self: end;
+}
+
+/* 【パターンA】備考が一切ない場合の横並び（PE2等と同様に綺麗に3分割） */
+div#lifestyle.box-union {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* 均等に3分割 */
+  width: 100%;
+  
+  /* 共通の内部構造（PE1などと同等のレイアウト規則） */
+  > dl {
+    display: grid;
+    grid-template-rows: max-content 1fr;
+    
+    /* 2つ目以降の要素の左側に、ゆとシート標準の綺麗な区切り点線を引く */
+    &:not(:first-child) {
+      border-left: 1px dotted var(--box-inside-border-color);
+    }
+    > dd {
+      padding: 0.5rem 0;
+      text-align: center;
+      align-self: center;
+    }
+  }
+}
+
+/* 【パターンB】備考がある場合のテーブルレイアウト（ご提示いただいたDX3rdプロパティを完全反映） */
+
+#lifestyle table {
+  width: 100%;
+  border-style: solid hidden hidden;
+  empty-cells: hide;
+  
+  > colgroup {
+    col:nth-child(1) { width: 6.2em; }
+    col:nth-child(2) { width: 2.8em; }
+    col:nth-child(3) { width: auto; }
+  }
+  & th.left {
+    border-width: 1px;
+    border-style: solid dotted hidden;
+    padding: .3rem 0 0 .3rem;
+    line-height: 1;
+  }
+  & td {
+    border-width: 1px;
+    border-style: solid dotted;
+  }
+  & td:first-child {
+    font-family: var(--font-proportional);
+    font-feature-settings: "palt";
+  }
+  & td.comment {
+    padding: .1rem 0 .1rem .3rem;
+    line-height: 1.4;
+    font-size: 93%;
+    text-align: left;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* ⑰⑱ 初期数値 ＆ 永続BS ドッキングラインの設定
+/* ---------------------------------------------------------------------------------------------------- */
+#stt-ebs-container {
+  display: flex;
+  width: 100%;
+  gap: var(--box-h-gap);
+  align-items: flex-start; /* ★それぞれのコンテンツの高さに合わせて上端揃えにする */
+}
+
+/* 【微調整可能：初期数値（プライド・カルマ）の固定横幅設定】
+   grid-template-columns でそれぞれの幅を指定します。
+   この箱はこれ以上伸びないため、永続BS非表示時は意図通り右側に空白ができます。 */
+#initial-values {
+  display: grid;
+  grid-template-columns: 10rem 10rem; /* 左がプライド、右がカルマの幅 */
+  flex-shrink: 0;
+}
+#initial-values > dl:nth-child(n+2) {
+  border-left: 1px dotted var(--box-inside-border-color); /* ゆとシート標準の区切り線 */
+}
+
+/* 永続BSが存在する場合、残りの横幅をすべて自動吸収させる設定（1frの役割） */
+#permanent-bs {
+  flex-grow: 1;
+  width: 0; /* flex-growを確実に効かせるためのおまじない */
+}
+
+/* 【適用ペナルティだけの専用スタイル】 */
+.penalty-wrap {
+  font-size: 60%;    /* 文字サイズを小さく */
+  opacity: 0.60;     /* 透明度を薄く */
+  margin-top: 4px;
+}
+
+@media screen and (width <= 767px){
+  #sub-status dl span.shorten {
+    font-size: 85%;
+  }
+}
+
+/* スマホ表示時のレスポンシブ */
+@media screen and (max-width: 735px) {
+  #stt-ebs-container {
+    flex-wrap: wrap;
+  }
+  #initial-values {
+    width: 100%;
+    grid-template-columns: 1fr 1fr; /* スマホ画面では固定幅を解除して均等に広げる */
+  }
+  #permanent-bs {
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* 各種テーブルの幅固定設定（PC等の広い画面用）
+   ※2行化に伴い、2行目の備考セルが誤爆するのを防ぐため、閲覧用は thead th に幅を指定します。
+   末尾の列（事情・性質）には幅を指定しないことで、残りの横幅を自動で吸い尽くします。 */
+/* ---------------------------------------------------------------------------------------------------- */
+
+/* --- ⑤ オリジン ＆ ⑥ アデプト テーブル --- */
+/* 【編集画面用】ハンドル列があるため、従来通りの指定 */
+.edit-table#origin-table, .edit-table#adept-table { table-layout: fixed; width: 100%; }
+.edit-table#origin-table :is(th, td):nth-child(1), .edit-table#adept-table :is(th, td):nth-child(1) { width: 1.4em; }
+.edit-table#origin-table :is(th, td):nth-child(2), .edit-table#adept-table :is(th, td):nth-child(2) { width: 12em; }
+.edit-table#origin-table :is(th, td):nth-child(3), .edit-table#adept-table :is(th, td):nth-child(3) { width: 6em; }
+.edit-table#origin-table :is(th, td):nth-child(4), .edit-table#adept-table :is(th, td):nth-child(4) { width: 10em; }
+.edit-table#origin-table :is(th, td):nth-child(5), .edit-table#adept-table :is(th, td):nth-child(5) { width: auto; }
+
+/* 【閲覧画面用】列が減ったため、1列目（名称）と2列目（パワー系統）の th のみを固定幅に */
+.data-table#origin-table, .data-table#adept-table { table-layout: fixed; width: 100%; }
+.data-table#origin-table thead th:nth-child(1), .data-table#adept-table thead th:nth-child(1) { width: 13rem; }  /* 名称（種類） */
+.data-table#origin-table thead th:nth-child(2), .data-table#adept-table thead th:nth-child(2) { width: 8rem; }  /* パワー系統 */
+
+
+/* --- ⑦ 妖精/神 テーブル --- */
+/* 【編集画面用】 */
+.edit-table#fairy-table { table-layout: fixed; width: 100%; }
+.edit-table#fairy-table :is(th, td):nth-child(1) { width: 1.4rem; }
+.edit-table#fairy-table :is(th, td):nth-child(2) { width: 12em; }
+.edit-table#fairy-table :is(th, td):nth-child(3) { width: 16.4em; }
+.edit-table#fairy-table :is(th, td):nth-child(4) { width: auto; }
+
+/* 【閲覧画面用】1列目（名称）の th のみを固定幅にし、2列目の「性質」を自動拡張に */
+.data-table#fairy-table { table-layout: fixed; width: 100%; }
+.data-table#fairy-table thead th:nth-child(1) { width: 13rem; }  /* 名称 */
+
+
+/* --- ⑨ 人脈 テーブル (従来通り) --- */
+.edit-table#connection-table { table-layout: fixed; width: 100%; }
+.edit-table#connection-table :is(th, td):nth-child(1) { width: 3rem; }
+.edit-table#connection-table :is(th, td):nth-child(2) { width: 16rem; }
+.edit-table#connection-table :is(th, td):nth-child(3) { width: 12rem; }
+.edit-table#connection-table :is(th, td):nth-child(4) { width: 12rem; }
+
+#connection .data-table { table-layout: fixed; width: 100%; }
+#connection .data-table :is(th, td):nth-child(1) { width: 17rem; }
+#connection .data-table :is(th, td):nth-child(2) { width: 10rem; }
+#connection .data-table :is(th, td):nth-child(3) { width: 10rem; }
+#connection .data-table :is(td):nth-child(4) {  text-align: left; padding: 0 6px; }
+
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* 統合巨大セクション内の二重線区切り設定 ＆ 2行目の備考（.note）の装飾
+   ※回り込んだ備考テキストの表示を左詰めにし、少し文字を細めて読みやすくします。 */
+/* ---------------------------------------------------------------------------------------------------- */
+#origin-adept-section .subset-section + .subset-section,
+#origin-adept-section .subset-section + div,
+#origin-adept-section hr {
+  border-top: 3px double var(--box-outside-border-color);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  
+  /* 上下の無駄な余白を減らし、スッキリと線を引く */
+  margin: 0px 0 0 0;
+  padding-top: 5px;
+}
+
+/* ⑧ 追加のパワー系統 用の装飾 */
+#additional-power-lineage {
+  padding: 5px;
+  background: rgba(0,0,0,0.02);
+}
+
+/* 下段に回り込んだ備考セルのテキスト配置を綺麗に整える */
+#origin-adept-section table td.note {
+  text-align: left;
+  padding-left: 1rem;
+  font-size: 90%;
+  opacity: 0.85;
+}
+
+
+
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* 画面幅が狭まった時の描写変化（レスポンシブ調整） */
+/* ---------------------------------------------------------------------------------------------------- */
+
+/* ■ 中間幅（画面横幅が1200px以下の環境） */
+@media screen and (max-width: 1200px) {
+
+  .edit-table#connection-table :is(th, td):nth-child(2) { width: 12rem; }
+  #connection .data-table :is(th, td):nth-child(1) { width: 12rem; }
+}
+
+/* ■ 狭い幅（画面横幅が860px以下の環境） */
+@media screen and (max-width: 860px) {
+  #origin-adept-section table, #connection table {
+    font-size: 0.9em;
+  }
+  #origin-adept-section table td, #connection table td {
+    transform: scaleY(calc(1/0.9));
+  }
+  
+  /* 閲覧画面の th 幅をさらにコンパクト化 */
+  .data-table#origin-table thead th:nth-child(1), .data-table#adept-table thead th:nth-child(1) { width: 8rem; }
+  .data-table#origin-table thead th:nth-child(2), .data-table#adept-table thead th:nth-child(2) { width: 7rem; }
+}
+
+/* ■ スマホ幅（画面横幅が735px以下の環境） */
+@media screen and (max-width: 735px) {
+  /* ページ全体の数mm貫通を強制シャットアウトする最強のストッパー */
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  main {
+    box-sizing: border-box;
+  }
+
+
+  
+  /* テーブルを囲む wrapper のみ横スクロールさせ、外側のレイアウト崩壊を防ぐ */
+  .subset-section {
+    width: 100%;
+    overflow-x: auto; 
+    overflow-y: clip;
+    padding-bottom: 0px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* テーブル本体は折り返しを禁止し、100%幅と最低幅を維持する */
+  #origin-adept-section table,
+  #connection table {
+    display: table;
+    table-layout: fixed !important;
+    width: 100%;
+    /* min-width: 500px;
+    white-space: nowrap !important; */
+  }
+
+  /* 各列の固定幅 */
+  .data-table#origin-table thead th:nth-child(1), .data-table#adept-table thead th:nth-child(1) { width: 12rem !important; }
+  .data-table#origin-table thead th:nth-child(2), .data-table#adept-table thead th:nth-child(2) { width: 8rem !important; }
+
+  .data-table#fairy-table thead th:nth-child(1) { width: 12rem !important; }
+
+  #connection .data-table :is(th, td):nth-child(1) { width: 12rem !important; }
+  #connection .data-table :is(th, td):nth-child(2) { width: 6rem !important; }
+  #connection .data-table :is(th, td):nth-child(3) { width: 6rem !important; }
+}
+
+/* ======================================================================== */
+/* オリジン・アデプト・妖精/神 テーブルのゼブラ塗装反転（閲覧画面のみ） */
+/* ======================================================================== */
+
+/* 奇数行（1行目・3行目…）にゆとシート標準のゼブラ色を塗る */
+.data-table:is(#origin-table, #adept-table, #fairy-table) tbody:nth-of-type(odd) > tr > td {
+  background-color: var(--box-even-rows-bg-color) !important;
+  background-image: none !important;
+}
+
+/* 偶数行（2行目・4行目…）の色を完全に消し去る */
+.data-table:is(#origin-table, #adept-table, #fairy-table) tbody:nth-of-type(even),
+.data-table:is(#origin-table, #adept-table, #fairy-table) tbody:nth-of-type(even) > tr > td {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+
+
+
+
+
+/* // Area-Battle
+---------------------------------------------------------------------------------------------------- */
+#area-battle {
+  position: relative;
+}
+@media screen and (width >= 1400px){
+  #area-battle {
+    margin-top: calc(-1 * var(--box-v-gap));
+  }
+}
+#area-battle > .box {
+  margin-top: var(--box-v-gap);
+}
+#area-battle > .box > table {
+  width: 100%;
+  border-style: hidden;
+}
+#area-battle > .box > table tbody tr {
+  border-width: 1px 0 0;
+  border-style: solid;
+}
+#area-battle > .box > table tbody td {
+  border-left-width: 1px;
+  border-style: dotted;
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* パワー・ウェア・アイテム (2段組ホバー展開レイアウト) */
+/* ---------------------------------------------------------------------------------------------------- */
+:is(#power, #wear, #item) {
+  position: relative;
+}
+:is(#power, #wear, #item) table thead th {
+  vertical-align: bottom;
+}
+
+/* PC等での列幅の個別割り当て（マス目のバランス設定） */
+@media screen {
+  /* パワー (全5列) */
+  #power table thead th {
+    &:nth-child(1) { width: 4em; }   /* 取得元 */
+    &:nth-child(2) { width: 16em; }  /* 名称 */
+    &:nth-child(3) { width: 6em; } /* タイプ */
+    &:nth-child(4) { width: auto; }   /* 空白 (残りの幅をここで吸収) */
+    &:nth-child(5) { width: 6em; }   /* 参照 */
+  }
+  
+  /* ウェア & アイテム (全6列) */
+  :is(#wear, #item) table thead th {
+    &:nth-child(1) { width: 4em; }   /* カテゴリ / 使用済 */
+    &:nth-child(2) { width: 16; }  /* 名称 */
+    &:nth-child(3) { width: auto; }   /* 空白 (クッション材) */
+    &:nth-child(4) { width: 4.5em; } /* 価格 */
+    &:nth-child(5) { width: 4.5em; } /* 維持費 */
+    &:nth-child(6) { width: 6em; }   /* 参照 */
+  }
+
+  
+}
+
+/* セル内の共通フォント・文字サイズ設定 */
+:is(#power, #wear, #item) table tbody td:nth-child(n+2) {
+  font-family: var(--font-proportional);
+  font-feature-settings: "palt";
+}
+:is(#power, #wear, #item) table tbody td {
+  &:nth-child(1) { font-size: 90%; }
+  &:nth-child(2) { font-weight: bold; }
+  &:nth-child(n+3){ font-size: 90%; } /* 3列目以降はすべて少し小さめ */
+}
+
+/* 効果（下段）のホバー展開ギミック */
+:is(#power, #wear, #item) table tbody td.note {
+  padding-left: .5rem;
+  display: none;
+}
+@media screen {
+  :is(#power, #wear, #item) table tbody:hover td.note {
+    display: table-cell;
+  }
+}
+:is(#power, #wear, #item)[data-full-open="true"] table tbody td.note {
+  display: table-cell;
+}
+
+/* 枠線の微調整 */
+@media all and (width > 735px){
+  :is(#power, #wear, #item):not([data-full-open="true"]) table > tbody:last-child:not(:hover) > tr:last-child {
+    border-top: none;
+  }
+}
+
+/* 使用済アイテムのグレーアウト表現 */
+#item table tbody.used-item {
+  opacity: 0.5; /* 全体を半透明にしてグレーアウトさせる（0.4〜0.6あたりでお好みで調整） */
+  filter: grayscale(100%); /* 画像やアイコンがあった場合もすべて白黒にする */
+}
+
+/* ■ スマホ表示時のレスポンシブ最適化 */
+@media screen and (max-width: 735px){
+  /* ダミーの空白列を消去 */
+  :is(#power, #wear, #item) table .spacer {
+    display: none;
+  }
+  
+  /* パワーのスマホ用グリッド（空白を除いた4列） */
+  #power table thead tr,
+  #power table tbody tr {
+    display: grid;
+    grid-template-columns: 4em auto 6em 6em;
+    border-width: 0 0 1px;
+  }
+  
+  /* ウェア & アイテムのスマホ用グリッド（空白を除いた5列）
+     スマホ画面でもはみ出さないよう、列幅を限界までキュッと詰めます */
+  :is(#wear, #item) table thead tr,
+  :is(#wear, #item) table tbody tr {
+    display: grid;
+    grid-template-columns: 4.5em auto 3.5em 3.5em 4em;
+    border-width: 0 0 1px;
+  }
+
+  :is(#power, #wear, #item) table tbody tr:last-child { border: 0; }
+  :is(#power, #wear, #item) table thead th:nth-child(n) {
+    width: auto;
+  }
+  :is(#power, #wear, #item) table tbody td[rowspan] {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  :is(#power, #wear, #item) table tbody td {
+    font-size: 100% !important;
+    border-width: 0 0 0 1px;
+    border-style: dotted;
+  }
+  :is(#power, #wear, #item) table tbody td.name {
+    grid-row: 1; grid-column: 2;
+   
+    padding-left: .5rem;
+    border-width: 0 0 0 1px; /* 取得元などとの間の区切り線 */
+  }
+  
+  /* 効果を常に2行目に全幅で表示 */
+  :is(#power, #wear, #item) table tbody td.note {
+    grid-row: 2; 
+    grid-column: 1 / -1; /* グリッドの全幅を使用 */
+    border-width: 1px 0 0;
+    border-style: solid;
+    display: block; 
+    font-size: 90% !important;
+  }
+  :is(#power, #wear, #item) table tbody td:first-child { border-left: 0; }
+  :is(#power, #wear, #item) table tbody td:last-child  { border-right: 0; }
+  
+  /* 展開ボタン非表示 */
+  :is(#power, #wear, #item) .open-button {
+    display: none;
+  }
+}
+
+
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* ⑬ 武器 (ネスト構造とツリーライン) */
+/* ---------------------------------------------------------------------------------------------------- */
+#weapon { position: relative; }
+
+/* 【各列の幅指定】 colgroupに対して幅を指定することで、ヘッダーも中身も確実に固定されます */
+@media screen {
+  #weapon table col.col-tree       { width: 1.5em; } 
+  #weapon table col.col-name       { width: 10em; }  
+  #weapon table col.col-range      { width: 7em; }   
+  #weapon table col.col-damage     { width: 8em; }   
+  
+  /* 旧：補記(12em) の空間を「左の空欄」と「右の価格」に分割します */
+  #weapon table col.col-note-left  { width: auto; } /* カスタマイズの空欄吸収用（残り幅） */
+  #weapon table col.col-price      { width: 4.5em; } /* ★カスタマイズの価格（ここで自由に幅指定可能） */
+  
+  #weapon table col.col-maint      { width: 4.5em; }   
+  #weapon table col.col-ref        { width: 6em; }
+}
+
+#weapon table tbody td {
+  font-family: var(--font-proportional);
+  font-feature-settings: "palt";
+  vertical-align: middle;
+}
+#weapon table tbody td.name { font-weight: bold; }
+#weapon table tbody td.small,
+#weapon table tbody th.small { font-size: 85%; }
+
+/* カスタマイズ用のヘッダー行装飾（見出しの強調） */
+#weapon tr.custom-header th {
+  background: rgba(0,0,0,0.03); 
+  border-top: 3px double var(--box-inside-border-color) !important;    /* 上を二重線に */
+  border-bottom: none !important; /* ★下の二重線を廃止（すぐ下の行の1px実線に任せる） */
+  font-weight: bold;
+  font-style: italic;
+  padding: 4px;
+}
+
+/* ========================================================= */
+/* --- ツリーライン（親子関係の線）の描画 --- */
+/* ========================================================= */
+#weapon td.tree {
+  position: relative;
+  padding: 0;
+  background: transparent !important;
+  border: hidden !important; /* 基本は貫通を防ぐためにすべての枠線を隠す */
+  border-color: transparent !important;
+}
+
+/* ★追加：見出し行の左端（ツリーマス）だけは、上の二重線を上書きして貫通させる */
+#weapon tr.custom-header td.tree {
+  border-top: 3px double var(--box-inside-border-color) !important;
+}
+
+/* ┃ 縦線 */
+#weapon td.tree-branch::before, 
+#weapon td.tree-line::before {
+  content: ""; position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  border-left: 2px solid var(--box-inside-border-color);
+}
+/* 縦線（最後尾：下半分は描画せずL字を作る） */
+#weapon td.tree-branch-last::before {
+  content: ""; position: absolute;
+  top: 0; bottom: 50%; left: 50%;
+  border-left: 2px solid var(--box-inside-border-color);
+}
+/* ━ 横線 */
+#weapon td.tree-branch::after, 
+#weapon td.tree-branch-last::after {
+  content: ""; position: absolute;
+  top: 50%; left: 50%; right: 0;
+  border-top: 2px solid var(--box-inside-border-color);
+}
+
+/* ========================================================= */
+/* --- カスタマイズ行の装飾（線の太さ解消と完全連動ゼブラ） --- */
+/* ========================================================= */
+/* 展開・非展開時の線が分厚くなる現象の解消 */
+#weapon tr.custom-tier1 td:not(.tree) {
+  border-top: 1px solid var(--box-inside-border-color) !important;
+  border-bottom: none !important;
+}
+#weapon tr.custom-tier2 td:not(.tree) {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* ★ゆとシート本来の tbody 単位のゼブラ塗装を【完全無力化】する最強の打消し */
+/* Perl側で「奇数（odd）」と判定された行と、「余白（spacer）」は、親が何色であろうと絶対に透明にする */
+#weapon tr.zebra-odd > td:not(.tree),
+#weapon tr.weapon-spacer > td {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+
+/* ★完全連動ゼブラ塗装 */
+/* Perl側で「偶数（even）」と判定された行にだけ、ゆとシート標準のゼブラ色を直接塗りつぶす */
+#weapon tr.zebra-even > td:not(.tree) {
+  background-color: var(--box-even-bg-color) !important;
+  background-image: none !important;
+}
+
+/* 武器間の余白（スペーサー）の高さ確保 */
+#weapon tr.weapon-spacer td {
+  height: 1.2rem;
+  padding: 0;
+  border: hidden !important; /* 横線がツリーを寸断するのを防ぐ */
+}
+
+#weapon tr.weapon-spacer td {
+  border-bottom: 1px solid var(--box-inside-border-color) !important;
+}
+/* 一番最後は不要なので消す */
+#weapon tbody:last-child tr.weapon-spacer td {
+  border-bottom: none !important;
+}
+
+#weapon td.tree {
+  border-right: 1px solid var(--box-inside-border-color) !important;
+}
+
+
+
+
+/* ========================================================= */
+/* --- カスタマイズ効果（下段）のホバー展開ギミック --- */
+/* ========================================================= */
+#weapon table tbody td.note {
+  padding-left: .5rem;
+  display: none;
+  font-size: 90%;
+}
+@media screen {
+  /* 上段(tier1)にマウスを乗せると、直後の下段(tier2)が開く（開いた下段にマウスを動かしても維持） */
+  #weapon tr.custom-tier1:hover + tr.custom-tier2 td.note,
+  #weapon tr.custom-tier2:hover td.note {
+    display: table-cell;
+  }
+}
+#weapon[data-full-open="true"] table tbody tr.custom-tier2 td.note {
+  display: table-cell;
+}
+
+/* これまでの「効果のセル(td)だけを隠す」設定を上書きし、「効果の行(tr)ごと隠す」ように変更します */
+
+#weapon table tbody td.note {
+  display: table-cell !important; /* セル自体は常に表示状態にしておく */
+}
+
+#weapon tr.custom-tier2 {
+  display: none; /* 初期状態では下段の「行」を丸ごと隠す（これで余分な縦線も消滅します） */
+}
+
+/* PC表示：ホバー時に行ごと表示させる */
+@media screen {
+  #weapon tr.custom-tier1:hover + tr.custom-tier2,
+  #weapon tr.custom-tier2:hover {
+    display: table-row; 
+  }
+}
+
+/* 全展開ボタンON時に行ごと表示させる */
+#weapon[data-full-open="true"] tr.custom-tier2 {
+  display: table-row; 
+}
+
+/* スマホ表示時の展開レイアウト補正（既存のスマホ用CSSと干渉しないための保険） */
+@media screen and (max-width: 735px) {
+  #weapon[data-full-open="true"] tr.custom-tier2 {
+    display: grid !important;
+  }
+}
+
+/* スペーサーの上辺に線を引く（ツリーマスの下には引かない） */
+#weapon tr.weapon-spacer td:not(.tree) {
+  border-top: 1px solid var(--box-inside-border-color) !important;
+}
+
+
+/* ========================================================= */
+/* ■ スマホ表示時のレスポンシブ最適化（武器セクション専用） */
+/* ========================================================= */
+/* ========================================================= */
+/* ■ スマホ表示時のレスポンシブ最適化（シンプル縮小レイアウト） */
+/* ========================================================= */
+@media screen and (max-width: 735px) {
+  
+  /* 1. 表の内部構造を正しく再構築し、画面幅いっぱい（100%）に固定する */
+  #weapon table { 
+    display: table !important; 
+    width: 100% !important; 
+    table-layout: fixed !important; /* ★追加：指定した幅を絶対に守らせる魔法 */
+    font-size: 75% !important; 
+  }
+  #weapon table thead { display: table-header-group !important; } /* ★修正：正しい表示形式 */
+  #weapon table tbody { display: table-row-group !important; }    /* ★修正：正しい表示形式 */
+  #weapon table tr    { display: table-row !important; }
+  
+  #weapon table th,
+  #weapon table td { 
+    display: table-cell !important; 
+    padding: 2px 1px !important; 
+    word-break: break-all; /* 長い単語が来ても強制的に改行させて表の崩壊を防ぐ */
+  }
+
+  /* 2. スマホ画面専用の列幅設定（合計100%になるように割り振り） */
+  /* 固定値(em)ではなく割合(%)にすることで、どんなスマホの画面幅でもピッタリ広がります */
+  #weapon table col.col-tree       { width: 4%; }  /* ツリー線用 */
+  #weapon table col.col-name       { width: 22%; } /* 名称 */
+  #weapon table col.col-range      { width: 12%; } /* 射程 */
+  #weapon table col.col-damage     { width: 14%; } /* ダメージ */
+  #weapon table col.col-note-left  { width: 19%; } /* 補記/空欄 */
+  #weapon table col.col-price      { width: 9%; }  /* 価格 */
+  #weapon table col.col-maint      { width: 9%; }  /* 維持費 */
+  #weapon table col.col-ref        { width: 11%; } /* 参照 */
+
+  /* 3. カスタマイズ効果（下段）を常に展開状態にする */
+  #weapon tr.custom-tier2 {
+    display: table-row !important;
+  }
+
+  /* 展開ボタンは不要なので隠す */
+  #weapon .open-button { display: none; }
+}
+
+#magic table {
+  > colgroup {
+    .name { width:  16em; } /* 名称 */
+    .type { width: 4.5em; } /* 種別 */
+    .exp  { width: 3.5em; } /* 経験点 */
+    .act  { width: 5.5em; } /* 発動値 */
+    .enc  { width: 3.4em; } /* 侵蝕値 */
+    .note { width:  auto; } /* 効果 */
+  }
+  > thead th {
+    font-size: 90%;
+  }
+  > tbody td:nth-child(1) { font-weight: bold; } /* 名称 */
+  > tbody td.note { padding-left: .5rem; }
+}
+
+
+
+
+/* ======================================================================== */
+/* 資産状況（閲覧画面用）のレイアウト */
+/* ======================================================================== */
+
+.finance-equation {
+  text-align: center;
+  padding: 0.5em 1em;
+  line-height: 1.8;
+  margin: 0;
+  font-size: 0.95em;
+}
+
+#finance-union{
+  
+  margin-top: var(--box-v-gap);
+}
+
+
+
+/* ▼ 追加：内訳ボックスの上部に区切り線を引く ▼ */
+.finance-breakdown {
+  border-top-width: 1px;
+}
+
+
+table.data-table :is(tbody,tfoot) td,
+ul.data-table > li,
+dl.data-table > * {
+  word-break: break-all;
+}
+
+
+/* Exps */
+#exps h2:not(:first-child) {
+  margin-top: 0;
+}
+#exps thead {
+  word-break: break-all;
+  font-size: 83%;
+  vertical-align: bottom;
+}
+@media screen and (width <= 735px){
+  #exps table {
+    margin-top: -1em;
+  }
+}
+
+[data-edb] {
+  position: relative;
+}
+[data-edb]:not(:empty):not([data-edb="0"]):not([data-edb=""]) {
+  padding-right: .5em !important;
+}
+[data-edb]:not(:empty):not([data-edb="0"]):not([data-edb=""])::after {
+  content: '+'attr(data-edb);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: 75%;
+  line-height: 0.8;
+  color: #b00;
+}
+
+/* // Free-Memo
+---------------------------------------------------------------------------------------------------- */
+#free-note,
+#free-history{
+  margin-top: var(--box-v-gap);
+}
+
+
+/* // History
+---------------------------------------------------------------------------------------------------- */
+#history {
+  margin-top: var(--box-v-gap);
+}
+#history table {
+  > thead {
+    .exp    { width: 4.6em; } /* 経験点 */
+  }
+  > tbody td.exp s {
+    opacity: 0.3;
+    text-decoration: none;
+  }
+}
+
+/* ////////// LayerEnd ////////// */
+}

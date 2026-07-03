@@ -1,0 +1,134 @@
+@charset "utf-8";
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-xx.png);
+  @media screen and (width <= 735px){
+    background-size: auto, 70%;
+  }
+}
+/* // List
+---------------------------------------------------------------------------------------------------- */
+/* .list table tr {
+    grid-template-columns: 26rem 0.7fr 6.2em 1fr 1fr 4em 0.6fr;
+    grid-template-areas:
+      "NAME   PL  AGE WORK  SYN  EXP DATE"
+      "NAME   PL  GEN DLOI  SYN  EXP DATE"
+      "NAME TAGS TAGS TAGS TAGS TAGS DATE"
+    ;
+}
+.list table .name    { grid-area: NAME; }
+.list table .player  { grid-area:   PL; }
+.list table .race    { grid-area: RACE; }
+.list table .gender  { grid-area:  GEN; }
+.list table .age     { grid-area:  AGE; }
+.list table .sign    { grid-area: SIGN; display:none; }
+.list table .blood   { grid-area: BLOD; display:none; }
+.list table .works   { grid-area: WORK; }
+.list table .exp     { grid-area:  EXP; }
+.list table .syndrome{ grid-area:  SYN; }
+.list table .dlois   { grid-area: DLOI; }
+.list table .tags    { grid-area: TAGS; }
+.list table .date    { grid-area: DATE; }
+
+.list table td.age {
+  align-items: end;
+}
+.list table td.dlois span {
+  display: inline-block;
+}
+.list table td.syndrome {
+  font-size: 85%;
+}
+.list table td.syndrome span {
+  display: block;
+}
+@media screen and (width <= 735px){
+  .list table tr {
+    grid-template-columns: 18rem 6em 3em 0.6fr 1fr 4em 4em;
+  }
+} */
+
+
+/* // List
+---------------------------------------------------------------------------------------------------- */
+.list table tr {
+    /* 各列の幅：[名前] [PL] [レベル/属性] [年齢/性別] [オリジン/アデプト] [妖精] [収入/所持] [維持/借金] [日付] */
+    grid-template-columns: 22rem 0.7fr 4em 4em 1.1fr 0.8fr 4.5em 4.5em 4.5em;
+    grid-template-areas:
+      "NAME   PL  LVL AGE ORI  FAI INC MNT DATE"
+      "NAME   PL  ATT GEN ADE  FAI RES INT DATE"
+      "NAME TAGS TAGS TAGS TAGS TAGS TAGS TAGS DATE"
+    ;
+}
+.list table .name    { grid-area: NAME; }
+.list table .player  { grid-area:   PL; }
+.list table .level   { grid-area:  LVL; } /* レベル */
+.list table .attribute{grid-area:  ATT; } /* 属性 */
+.list table .gender  { grid-area:  GEN; }
+.list table .age     { grid-area:  AGE; }
+.list table .origin  { grid-area:  ORI; }
+.list table .adept   { grid-area:  ADE; }
+.list table .fairy   { grid-area:  FAI; }
+.list table .income  { grid-area:  INC; }
+.list table .rest    { grid-area:  RES; }
+.list table .maint   { grid-area:  MNT; }
+.list table .interest{ grid-area:  INT; }
+.list table .tags    { grid-area: TAGS; }
+.list table .date    { grid-area: DATE; }
+
+/* 上段に割り振られた要素は下揃えにする（これで下段と密着します） */
+.list table td.level,
+.list table td.age,
+.list table td.origin,
+.list table td.income,
+.list table td.maint {
+  align-items: end;
+}
+
+/* 属性などは改行させない */
+.list table td.attribute {
+  font-size: 85%;
+  white-space: nowrap;
+}
+
+/* オリジン・アデプト・妖精の span (1個1個の要素) をブロック化して縦積みにする */
+.list table td.origin span,
+.list table td.adept span,
+.list table td.fairy span {
+  display: block;
+  font-size: 85%;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; 
+}
+
+/* スマホ表示時のレスポンシブ配置 */
+@media screen and (width <= 735px){
+  .list table tr {
+    /* スマホは横幅が狭いので少しコンパクトに調整 */
+    grid-template-columns: 15rem 4em 3.5em 1fr 1fr 4em;
+    grid-template-areas:
+      "NAME LVL AGE ORI INC DATE"
+      "NAME ATT GEN ADE RES DATE"
+      "NAME TAGS TAGS FAI FAI DATE"
+    ;
+  }
+  .list table .player,
+  .list table .maint,
+  .list table .interest {
+    display: none; /* スマホ画面では窮屈になるため一部非表示 */
+  }
+}
+/* // List-Simple
+---------------------------------------------------------------------------------------------------- */
+.list ul li a::before {
+  content: attr(data-lv);
+}
+
+
+/* ////////// LayerEnd ////////// */
+}

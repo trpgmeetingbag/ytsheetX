@@ -1,0 +1,1123 @@
+@charset "utf-8";
+
+
+/* // 編集画面の全体レイアウト（chara.cssの2カラム指定を解除して中央寄せにする）
+---------------------------------------------------------------------------------------------------- */
+
+
+/* // 以下、もともとあるDXのコードが続きます... */
+
+/* // キャラクター
+---------------------------------------------------------------------------------------------------- */
+body:not([data-create-type="C"]) .construction-only {
+  display: none;
+}
+body:not([data-create-type="F"]) .fullscratch-only {
+  display: none;
+}
+
+#regulation dl {
+  grid-template-columns: max-content 1fr;
+}
+#regulation dl dt {
+  grid-column: 1;
+  grid-row: auto;
+  padding-left: .5em;
+  padding-right: .2em;
+  line-height: 1.8;
+  align-self: start;
+  text-align: right;
+}
+#regulation dl dd {
+  grid-column: 2;
+  grid-row: auto;
+  font-size: 1.2rem;
+  align-self: start;
+  text-align: left;
+}
+#regulation dl dd label {
+  margin-left: 2px;
+  font-size: inherit;
+  line-height: inherit;
+}
+#regulation dl dd input[name=history0Exp] {
+  width: 5em;
+}
+#regulation dl dd input[name=stage] {
+  width: 16em;
+}
+
+
+
+#class-status{ grid-area: CLT; }
+#personal-bottom{ grid-area: ANJ; }
+
+
+#area-status {
+  display: grid;
+  grid-gap: var(--box-v-gap) var(--box-h-gap);
+  /* カラム幅の比率は仮設定です。お好みに応じて微調整してください */
+  grid-template-columns: 0.8fr 1.2fr 1.5fr 2.1fr;
+  grid-template-rows: auto max-content max-content auto;
+    grid-template-areas:
+"PER PER PER IMG"
+    "ANJ ANJ ANJ IMG"
+    "CLT CLT CLT IMG"
+    "KRM KRM KRM IMG"
+  ;
+}
+
+@media screen and (width <= 735px){
+  #area-status {
+    grid-template-columns: 1fr 1fr 2fr;
+    grid-gap: var(--box-v-gap) var(--box-h-gap);
+    grid-template-rows: auto auto auto 1fr;
+
+
+    grid-template-areas:
+      "IMG  IMG  IMG"
+      "PER  PER  PER"
+      "ANJ  ANJ  ANJ"
+      "CLT  CLT  CLT"
+      "KRM  KRM  KRM"
+    ;
+  }
+}
+
+body:not(.mode-crc) .crc-only {
+  display: none;
+}
+
+
+/* // パーソナルデータ（編集画面用3カラム均等配置）
+---------------------------------------------------------------------------------------------------- */
+/* // パーソナルデータ（編集画面用3カラム均等配置・余白強制リセット）
+---------------------------------------------------------------------------------------------------- */
+#personal {
+  grid-template-columns: 1fr 1fr 1fr !important;
+}
+
+/* dlボックス自体の余白を最小限にする */
+#personal dl.box {
+  display: block !important;
+  padding: 0.2rem 0.2rem 0.2rem !important; 
+}
+
+/* dd（入力欄の外側）が持っている上下の余白と最低高さを完全に消し去る */
+#personal dd {
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+/* input（入力欄自体）が持っている共通CSSの余白設定をねじ伏せて100%に広げる */
+#personal dd input {
+  width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  text-align: center;
+}
+
+/* // クラス／強化値テーブルの列幅・レイアウト制御
+---------------------------------------------------------------------------------------------------- */
+#class-status table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* すべての列が独立している「メインクラス」の行を基準にして、
+  th と td:nth-of-type を使い、全6列の横幅をピンポイントで指定します。
+*/
+#class-status table tbody tr:nth-child(2) th:nth-of-type(1) { width: 8.5em; } /* 1列目: 見出し（メインクラス等） */
+#class-status table tbody tr:nth-child(2) td:nth-of-type(1) { width: auto; }  /* 2列目: セレクトボックス（可変） */
+#class-status table tbody tr:nth-child(2) td:nth-of-type(2) { width: 1.0em; }  /* 3列目: 空白調整（全角スペースの列） */
+#class-status table tbody tr:nth-child(2) td:nth-of-type(3) { width: 5.5em; }  /* 4列目: 武装 */
+#class-status table tbody tr:nth-child(2) td:nth-of-type(4) { width: 5.5em; }  /* 5列目: 変異 */
+#class-status table tbody tr:nth-child(2) td:nth-of-type(5) { width: 5.5em; }  /* 6列目: 改造 */
+
+/* --- 入力欄と合計値の見た目の微調整 --- */
+
+/* 4・5・6列目の数値入力欄（input）を枠いっぱいに広げ、文字を中央寄せにする */
+#class-status table tbody td input[type="number"] {
+  width: 100% !important;
+  max-width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+/* 4・5・6列目のセル（ラジオボタンや合計値のテキスト）をすべて中央寄せにする */
+#class-status table tbody tr td:nth-of-type(3),
+#class-status table tbody tr td:nth-of-type(4),
+#class-status table tbody tr td:nth-of-type(5),
+#stt-total-buso,
+#stt-total-heni,
+#stt-total-kaizo {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+/* // カルマ編集テーブルの列幅・レイアウト制御
+---------------------------------------------------------------------------------------------------- */
+#karma-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* --- 各列の幅をピンポイントで固定（全3列） --- */
+#karma-table thead th:nth-child(1) { width: 1.0em; } /* 1列目: ドラッグハンドル（.handle） */
+#karma-table thead th:nth-child(2) { width: 3em; } /* 2列目: 達成チェックボックス */
+#karma-table thead th:nth-child(3) { width: auto; }  /* 3列目: カルマ名入力欄（残りの幅をすべて使用） */
+
+/* --- 各セルの配置・入力欄の見た目の調整 --- */
+
+/* ハンドル列とチェックボックス列の中身を中央寄せにする */
+#karma-table thead th:nth-child(2) {
+  text-align: center !important;
+  vertical-align: middle;
+}
+#karma-table tbody tr td:nth-child(1),
+#karma-table tbody tr td:nth-child(2) {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+/* カルマ名入力欄（input）を枠いっぱいに広げる */
+#karma-table tbody tr td:nth-child(3) input {
+  width: 100% !important;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+/* チェックボックス自体の大きさと位置の微調整（お好みに応じて変えてください） */
+#karma-table tbody tr td input[type="checkbox"] {
+  transform: scale(1.1);
+  vertical-align: middle;
+  margin: 0 !important;
+}
+
+/* // 記憶のカケラ編集テーブルの列幅・レイアウト制御
+---------------------------------------------------------------------------------------------------- */
+#memory-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* --- 各列の幅をピンポイントで固定（全3列） --- */
+#memory-table thead th:nth-child(1) { width: 1.0em !important; } /* chara.cssを強制粉砕 */
+#memory-table thead th:nth-child(2) { width: 14em !important; } 
+#memory-table thead th:nth-child(3) { width: auto !important; }
+
+/* ハンドル列を中央寄せにする */
+#memory-table tbody tr td:nth-child(1) {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+/* タイトルと記憶の内容の入力欄（input）を枠いっぱいに広げる */
+#memory-table tbody tr td:nth-child(2) input,
+#memory-table tbody tr td:nth-child(3) input {
+  width: 100% !important;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+
+#miren table {
+  /* ▼ 見出しを中央寄せ ▼ */
+  > thead th {
+    text-align: center;
+    padding-left: 0;
+  }
+  
+  > colgroup {
+    col:nth-child(1) { width: 1em; } /* 未練の対象 */
+    col:nth-child(2) { width: 11em; } /* 未練の対象 */
+    col.miren-to     { width: 3em; text-align: center; } /* への */
+    col:nth-child(4) { width: 5em; } /* 未練の内容 */
+    col:nth-child(5) { width: 6em;  } /* 狂気点 */
+    col:nth-child(6) { width: auto; } /* 発狂内容 */
+  }
+
+  /* ▼ 「への」とその右側のセルの間の境界線を消す ▼ */
+  /* > tbody td.miren-to {
+    border-right: none;
+  }
+  > tbody td.miren-to + td {
+    border-left: none;
+  } */
+}
+
+    #image,
+    .image-custom-view {
+      background-image: url("$pc{imageURL}");
+    }
+    /* 自由記入入力欄の微調整 */
+    .free-input { margin-top: 5px; width: 90%; }
+    
+    /* 狂気点ゲージ */
+    .insanity-gauge { display: inline-block; white-space: nowrap; margin-right: 0.5em; }
+    .insanity-gauge .dot { cursor: pointer; color: #ccc; user-select: none; font-size: 1.2em; padding: 0 1px;}
+    .insanity-gauge .dot.active { color: #333; }
+    .insanity-gauge .dot.reset { color: #999; font-size: 1em;}
+    
+    /* 未練の幅 */
+    .miren-to { width: 3em; text-align: center; }
+    
+    /* スキルエリアの損傷チェックとパーツレベル非表示 */
+    .skill-area .damage-checkbox,
+    .skill-area .part-level-input { display: none; }
+    
+    /* 強化パーツ取得状況の表示用 */
+    .part-status-line { line-height: 1.6; margin-bottom: 0.5em; font-size: 1.1em; }
+    .part-status-error { color: #e33; font-weight: bold; }
+    
+    /* ゴミ箱の表示調整（名称列を表示） */
+    #skill-trash-table tbody tr td:nth-child(2) { display: none !important; }
+    #skill-trash-table tbody tr td:nth-child(3) { display: table-cell !important; width: 100%; }
+
+/* // スキル・パーツ編集テーブルの列幅・レイアウト制御
+---------------------------------------------------------------------------------------------------- */
+.skill-area table,
+.part-area table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--box-v-gap);
+}
+
+/* // スキル・各種パーツ・ゴミ箱の枠同士の縦の余白設定
+---------------------------------------------------------------------------------------------------- */
+#skill,
+#skill-trash,
+#part-head,
+#part-arms,
+#part-torso,
+#part-legs {
+  margin-top: var(--box-v-gap);
+}
+
+
+/* =========================================
+   上段：各列の幅指定（thead th で絶対固定）
+========================================= */
+/* 1: ハンドル */
+.skill-area table thead th:nth-child(1), 
+.part-area table thead th:nth-child(1) { width: 1.0em !important; }
+
+/* 2: 損傷 (パーツのみ表示) */
+.part-area table thead th:nth-child(2) { width: 3.5em !important; }
+
+/* 3: 名称 (残りの幅をここで吸収) */
+.skill-area table thead th:nth-child(3), 
+.part-area table thead th:nth-child(3) { width: auto !important; }
+
+/* 4: レベル (パーツのみ表示) */
+.part-area table thead th:nth-child(9) { width: 4.5em !important; }
+
+/* 5: タイミング */
+.skill-area table thead th:nth-child(4), 
+.part-area table thead th:nth-child(4) { width: 9em !important; }
+
+/* 6: コスト */
+.skill-area table thead th:nth-child(5), 
+.part-area table thead th:nth-child(5) { width: 6em !important; }
+
+/* 7: 射程 */
+.skill-area table thead th:nth-child(6), 
+.part-area table thead th:nth-child(6) { width: 6em !important; }
+
+/* 8: 上昇行動値 */
+.skill-area table thead th:nth-child(7), 
+.part-area table thead th:nth-child(7) { width: 5.5em !important; }
+
+/* 9: カテゴリ */
+.skill-area table thead th:nth-child(8), 
+.part-area table thead th:nth-child(8) { width: 7.0em !important; }
+
+
+/* =========================================
+   上段：入力欄とセルの見た目調整
+========================================= */
+/* ハンドルと損傷チェックボックスの中央寄せ */
+.skill-area table tbody td.handle,
+.part-area table tbody td.handle,
+.part-area table tbody tr:nth-child(odd) td:nth-child(2) {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+/* 上段の各種入力欄をセルの枠いっぱいに広げる */
+.skill-area table tbody tr:nth-child(odd) td input[type="text"],
+.skill-area table tbody tr:nth-child(odd) td input[type="number"],
+.skill-area table tbody tr:nth-child(odd) td select,
+.part-area table tbody tr:nth-child(odd) td input[type="text"],
+.part-area table tbody tr:nth-child(odd) td input[type="number"],
+.part-area table tbody tr:nth-child(odd) td select {
+  width: 100% !important;
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+
+/* =========================================
+   下段：Flexboxを使った完璧な1行レイアウト
+========================================= */
+/* 下段のセル（div）をFlexboxにして、中身を横1列に美しく並べる */
+.skill-area table tbody tr:nth-child(even) td > div,
+.part-area table tbody tr:nth-child(even) td > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap; /* 絶対に改行させない */
+  gap: 0.5em; /* 各項目の間に少し隙間を空ける */
+  padding: 0.2rem 0.5rem;
+}
+
+/* 「計算に含まない」チェックボックス周り */
+.skill-area table tbody tr:nth-child(even) td > div label,
+.part-area table tbody tr:nth-child(even) td > div label {
+  white-space: nowrap;
+  margin-right: 0.1em;
+}
+
+/* 取得先のセレクトボックス・自由記入欄の幅 */
+.skill-area table tbody tr:nth-child(even) td > div select,
+.part-area table tbody tr:nth-child(even) td > div select,
+.skill-area table tbody tr:nth-child(even) td > div input.free-input,
+.part-area table tbody tr:nth-child(even) td > div input.free-input {
+  width: 8em !important; 
+}
+
+/* 効果の入力欄を「残りのスペースすべて」に広げる魔法 */
+.skill-area table tbody tr:nth-child(even) td > div input[name$="Note"],
+.part-area table tbody tr:nth-child(even) td > div input[name$="Note"] {
+  flex-grow: 1; /* 残りの幅を全力で埋める */
+  width: auto !important; /* HTML側の style="width: 50%" を強制上書き */
+  margin: 0 !important;
+}
+
+/* // スキル欄：不要な列（損傷・レベル）の非表示方法の修正
+---------------------------------------------------------------------------------------------------- */
+/* セルを display: none で消すと下段の colspan="8" と計算が合わなくなり右側に謎の空白ができるため、幅を0にして潰す */
+.skill-area table thead th:nth-child(2),
+.skill-area table thead th:nth-child(9),
+.skill-area table tbody tr:nth-child(odd) td:nth-child(2),
+.skill-area table tbody tr:nth-child(odd) td:nth-child(9) {
+  width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: 0 !important; 
+}
+
+/* セルの中身（チェックボックスや入力欄、テキスト）を完全に消す */
+.skill-area table thead th:nth-child(2) *,
+.skill-area table thead th:nth-child(9) *,
+.skill-area table tbody tr:nth-child(odd) td:nth-child(2) *,
+.skill-area table tbody tr:nth-child(odd) td:nth-child(9) * {
+  display: none !important;
+}
+
+#sub-status {
+
+  /* ▼ ここで左から順番に幅を指定します ▼ */
+  grid-template-columns: 
+    17rem       /* 1列目：最大行動値の幅（文字数に合わせて max-content でも可） */
+    13rem        /* 2列目：行動値内訳の幅（auto にすると中身の文字の長さに合わせて自動伸縮します） */
+    5rem        /* 3列目：ダミー要素の幅（ここを増やすと初期配置との間がさらに開きます） */
+    17rem       /* 4列目：初期配置の幅 */
+    1fr;        /* 5列目：右端の余白（残りのスペースをすべてここで吸収し、全体を左寄せにします） */
+
+}
+
+#parts-status{
+  margin-top: var(--box-v-gap);
+}
+
+/* // 閲覧時のオプション（ゆとシート純正風・2列の表組みレイアウト）
+---------------------------------------------------------------------------------------------------- */
+#view-options {
+  margin-top: var(--box-v-gap); /* 他のボックスとの縦の余白を適用 */
+}
+
+/* dl を Grid にして2列の表組みにする */
+#view-options dl {
+  display: grid;
+  grid-template-columns: 11em 1fr; /* 左列（見出し）の幅を11em、右列は残りの幅すべて */
+  border-top: 1px solid var(--box-inside-border-color); /* 一番上の境界線 */
+  margin: 0;
+}
+
+/* 左列：見出し（dt）のスタイル */
+#view-options dt {
+  grid-column: 1;
+  background-color: var(--box-even-rows-bg-color); /* ゆとシート標準の薄い背景色 */
+  border-bottom: 1px solid var(--box-inside-border-color);
+  border-right: 1px solid var(--box-inside-border-color);
+  padding: 0.5rem 0.8rem;
+  font-weight: bold;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center; /* 選択肢と高さを合わせるため縦中央寄せ */
+}
+
+/* 右列：設定内容（dd）のスタイル */
+#view-options dd {
+  grid-column: 2;
+  border-bottom: 1px solid var(--box-inside-border-color);
+  padding: 0.5rem 0.8rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* 画面が狭い時に自動で折り返す */
+  gap: 0.3rem 1.2rem; /* ラジオボタン同士の左右の間隔 */
+}
+
+/* チェックボックス・ラジオボタンの文字とクリック領域の調整 */
+#view-options dd label {
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em; /* ポチ（○）と文字の間の隙間 */
+}
+
+#view-options dd input[type="checkbox"],
+#view-options dd input[type="radio"] {
+  margin: 0 !important; /* ゆとシート共通の不要なマージンをリセット */
+  cursor: pointer;
+}
+
+/* --- スマホなど画面が狭い時のレスポンシブ対応 --- */
+@media screen and (max-width: 735px) {
+  #view-options dl {
+    grid-template-columns: 1fr; /* 1列に落とす */
+  }
+  #view-options dt {
+    grid-column: 1;
+    border-right: none;
+    background-color: var(--box-head-bg-color-pale); /* スマホ時は見出し背景を少し濃く */
+    padding: 0.3rem 0.5rem;
+  }
+  #view-options dd {
+    grid-column: 1;
+    padding: 0.5rem;
+  }
+}
+
+#lifepath {
+  margin-top: var(--box-v-gap);
+}
+#lifepath table {
+  table-layout: auto;
+  & th:nth-child(1) { width: 5em; }
+  & td:nth-child(2) { width: 6em; }
+  & th:nth-child(3) { width: 4em; }
+  & td.center { width: 4em; }
+  & td:last-child   { width: auto; }
+}
+#lifepath table tbody tr:before {
+  display: none;
+}
+#lifepath table th.small {
+  border-bottom-style: solid;
+}
+#lifepath table th.small.right {
+  font-size: 85%;
+}
+#lifepath table input[type=checkbox] {
+  transform: scale(1.4) translateY(.1em);
+  margin-right: .2em;
+}
+@media screen and (width <= 735px){
+  #lifepath table,
+  #lifepath tbody,
+  #lifepath th,
+  #lifepath td {
+    display: block;
+    width: auto !important;
+  }
+  #lifepath tbody {
+    padding: .5em 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+  }
+  #lifepath tr {
+    display: grid;
+  }
+  #lifepath tr,
+  #lifepath th,
+  #lifepath td {
+    border-style: none !important;
+  }
+  #lifepath th {
+    padding-top: .3em;
+  }
+  #lifepath tbody:nth-child(n+1):nth-child(-n+3) tr {
+    grid-template-columns: 6em 8em 1fr;
+  }
+  #lifepath tbody:nth-child(n+1):nth-child(-n+3) tr .left {
+    grid-column: span 3;
+  }
+  #lifepath tbody:nth-child(n+4):nth-child(-n+5) tr {
+    grid-template-columns: 6em 1fr 6em 1fr;
+  }
+  #lifepath tbody:nth-child(n+4):nth-child(-n+5) tr .left {
+    grid-column: span 4;
+  }
+  #lifepath tbody:nth-child(n+6):nth-child(-n+7) tr {
+    grid-template-columns: 6em 1fr 6em 1fr;
+  }
+  #lifepath tbody:nth-child(n+6):nth-child(-n+7) tr .left {
+    grid-column: span 4;
+  }
+  #lifepath tbody:nth-child(5) tr:nth-child(2) th:nth-child(2) {
+    display: none;
+  }
+}
+
+#status > summary #exp-skill.minus {
+  color: #e70;
+}
+#status dl#status-table > *:nth-of-type(even),
+#status dl#skill-table > *:nth-of-type(even) {
+  background-color: var(--box-even-rows-bg-color);
+}
+#status dl#status-table {
+  display: grid;
+  grid-template-columns: 1fr .7fr 1fr .7fr 1fr .7fr 1fr .7fr;
+
+  > dt {
+    display: grid;
+    place-items: center;
+  }
+  > dd {
+    font-size: 1.3em;
+    border-width: 1px 1px 0;
+    border-style: solid;
+    &:last-child { border-right: hidden; }
+  }
+}
+#status dl#skill-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  > dt {
+    display: none;
+  }
+  > dd:not(:last-child) {
+    border-right-width: 1px;
+    border-right-style: solid;
+  }
+  > dd > dl {
+    display: grid;
+    grid-template-columns: 1fr max-content;
+  }
+  > dd > dl > * {
+    border-top-width: 1px;
+    border-top-style: solid;
+  }
+  > dd > dl > dt.left {
+    display: grid;
+    place-items: center start;
+    padding-left: .5em;
+    font-weight: normal;
+  }
+  > dd > dl > dt input {
+    font-weight: normal;
+  }
+  > dd > dl > dd input {
+    min-width: 0;
+    width: 3.4em;
+  }
+  > dd > dl > dd input:last-of-type {
+    width: 3em;
+    margin: 0 -.13em;
+    transform: scale(0.9);
+  }
+}
+@media screen and (width <= 735px){
+  #status dl#status-table > *:nth-of-type(even) {
+    background: none;
+  }
+  #status dl#skill-table {
+    display: block;
+    > dt {
+      display: block;
+      border-top-width: 1px;
+      border-top-style: solid;
+    }
+    > dd dt {
+      font-size: inherit;
+    }
+  }
+}
+
+
+#effect {
+  margin-top: var(--box-v-gap);
+}
+#effect table {
+  table-layout: auto;
+  > thead th { 
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  auto; } /* 名称 */
+    &:nth-child(3) { width:   2em; } /* LV */
+    &:nth-child(4) { width: 8.9em; } /* タイミング */
+    &:nth-child(5) { width: 8.9em; } /* 技能 */
+    &:nth-child(6) { width: 5.9em; } /* 難易度 */
+    &:nth-child(7) { width: 6.3em; } /* 対象 */
+    &:nth-child(8) { width: 5.3em; } /* 射程 */
+    &:nth-child(9) { width: 3.9em; } /* 侵蝕値 */
+    &:nth-child(10){ width: 5.4em; } /* 制限 */
+  }
+}
+#effect table tbody td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#effect table tbody td[rowspan] {
+  vertical-align: middle;
+}
+#effect table tbody td[colspan] {
+  padding: 0 0 5px;
+  vertical-align: middle;
+  text-align: right;
+  & div {
+    display: grid;
+    grid-gap: .1rem;
+    grid-template-columns: 2.3em 6.5em 3.8em 3em 2.3em 1fr;
+    align-items: end;
+  }
+  & b {
+    display: block;
+    font-size: 85%;
+    text-align: right;
+  }
+  & .small {
+    font-size: 80%;
+    transform: scale(0.8,1);
+    white-space: nowrap;
+  }
+  & b::after {
+    content: ":";
+    font-size: 1rem;
+  }
+}
+@media screen and (width > 735px){
+  #effect table tbody td:nth-child(n+4) input {
+    font-size: 12.5px;
+  }
+}
+@media screen and (width <= 735px){
+  #effect summary + div { overflow-x: auto; }
+  #effect table {
+    table-layout: fixed;
+  }
+  #effect table thead tr,
+  #effect table tbody tr {
+    display: table-row;
+  }
+  #effect table tbody td[rowspan],
+  #effect table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #effect table tbody td[colspan] div {
+    grid-template-columns: max-content 6.5em max-content 3em max-content 1fr;
+  }
+  #effect table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  14em; } /* 名称 */
+    &:nth-child(3) { width: 3.5em; } /* LV */
+    &:nth-child(4) { width:   8em; } /* タイミング */
+    &:nth-child(5) { width:   8em; } /* 技能 */
+    &:nth-child(6) { width:   5em; } /* 難易度 */
+    &:nth-child(7) { width:   6em; } /* 対象 */
+    &:nth-child(8) { width:   5em; } /* 射程 */
+    &:nth-child(9) { width:   4em; } /* 侵蝕値 */
+    &:nth-child(10){ width:   5em; } /* 制限 */
+  }
+  #effect table tbody td {
+    border-left: hidden;
+    padding: .5em 0 0;
+    &[colspan] {
+      padding: 0 0 .5em;
+    }
+  }
+  #effect table tbody td b {
+    white-space: nowrap;
+  }
+  #effect table tbody td:nth-child(3) input { min-width: 2em; } /* LV */
+}
+
+#magic {
+  margin-top: var(--box-v-gap);
+}
+#magic table thead th {
+  &:nth-child(1) { width: 1.4em; }
+  &:nth-child(2) { width:  15em; } /* 名称 */
+  &:nth-child(3) { width:   7em; } /* 種別 */
+  &:nth-child(4) { width: 3.8em; } /* 経験点 */
+  &:nth-child(5) { width: 5.5em; } /* 発動値 */
+  &:nth-child(6) { width: 3.9em; } /* 侵蝕値 */
+}
+#magic table thead th,
+#magic table tfoot th {
+  font-size: 90%;
+}
+#magic table tbody td {
+  padding: .5rem 0;
+}
+@media screen and (width <= 735px){
+  #magic summary + div { overflow-x: auto; }
+  #magic table {
+    table-layout: fixed;
+  }
+  #magic table thead tr,
+  #magic table tbody tr {
+    display: table-row;
+  }
+  #magic table tbody td[rowspan] {
+    display: table-cell;
+  }
+  #magic table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #magic table tbody td[colspan] div {
+    grid-template-columns: max-content 6.5em max-content 3em max-content 1fr;
+  }
+  #magic table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  15em; } /* 名称 */
+    &:nth-child(3) { width:   7em; } /* 種別 */
+    &:nth-child(4) { width: 3.8em; } /* 経験点 */
+    &:nth-child(5) { width: 5.5em; } /* 発動値 */
+    &:nth-child(6) { width: 3.9em; } /* 侵蝕値 */
+    &:nth-child(7) { width: 3.9em; } /* 侵蝕値 */
+    &:last-child   { width:  16em; } /* 効果 */
+  }
+}
+
+#combo {
+  margin-top: var(--box-v-gap);
+}
+#combo .combo-table {
+  display: grid;
+  grid-template-columns: 1.5em 1.5fr 0.8fr 2.2fr;
+  grid-template-areas:
+    "HNDL NAME COMB COMB"
+    "HNDL   IN   IN  OUT"
+    "HNDL NOTE NOTE  OUT"
+    "HNDL NOTE NOTE OTHR"
+  ;
+}
+#combo .combo-table .handle {
+  grid-area: HNDL;
+  display: grid;
+  place-items: center;
+}
+#combo .combo-table .combo-other {
+  grid-area: OTHR;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1px 2px .4rem;
+  
+  > .button {
+    font-size: 88%;
+    padding: 3px 4px 1px;
+    font-family: var(--font-proportional);
+  }
+}
+#combo .combo-table .combo-combo,
+#combo .combo-table .combo-in,
+#combo .combo-table .combo-out,
+#combo .combo-table .combo-note,
+#combo .combo-table dl dt,
+#combo .combo-table dl dd {
+  padding: 0;
+  border-width: 0 !important;
+}
+#combo .combo-table .combo-in,
+#combo .combo-table .combo-out {
+  margin-top: .5rem;
+}
+#combo .combo-table textarea,
+#combo .combo-table dl dd input,
+#combo .combo-table dl dd select {
+  width: calc(100% - 1px);
+  margin: 0 1px 1px 0;
+}
+#combo .combo-table .combo-in {
+  flex-wrap: wrap;
+}
+#combo .combo-table .combo-in dl {
+  flex-grow: 1 !important;
+  &:nth-child(1) { flex-basis: 30%; }
+  &:nth-child(2) { flex-basis: 35%; }
+  &:nth-child(3) { flex-basis: 35%; }
+  &:nth-child(4) { flex-basis: 26%; }
+  &:nth-child(5) { flex-basis: 30%; }
+  &:nth-child(6) { flex-basis: 26%; }
+  &:nth-child(7) { flex-basis: 16%; }
+}
+
+#combo .combo-table .combo-out {
+  padding-left: .5rem;
+  display: grid;
+  grid-template-columns: 1.2fr max-content 1fr 0.8fr max-content 1fr 1fr;
+  grid-template-rows: max-content auto;
+  & .combo-cond     { grid-column: 1; }
+  & [id*="Stt"]     { grid-column: 2; }
+  & .combo-dice     { grid-column: 3; }
+  & .combo-crit     { grid-column: 4; }
+  & [id*="SkillLv"] { grid-column: 5; }
+  & .combo-fixed    { grid-column: 6; }
+  & .combo-atk      { grid-column: 7; }
+  
+  & dt.combo-dice   { grid-column: 2 / span 2; }
+  & dt.combo-fixed  { grid-column: 5 / span 2; }
+
+  > dt {
+    align-self: center;
+  }
+  > dt.combo-fixed {
+    line-height: 1;
+  }
+  > dt.combo-cond .combo-condition-utility {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border: 1px dashed transparent;
+    font-size: 75%;
+    margin-left: 0.25em;
+    overflow: visible;
+    position: relative;
+    top: 1px;
+    &::before {
+      font-family: "Material Symbols Outlined";
+      font-variation-settings: 'FILL' 1;
+      content: '\e5d4';
+    }
+    &:hover {
+      background-color: rgba(240, 248, 255, 0.25);
+      border-color: rgba(128, 128, 128, 0.25);
+      border-radius: calc((1.5rem - 2px) / 2);
+    }
+  }
+  & dd[id*="Stt"]:not(:empty),
+  & dd[id*="SkillLv"]:not(:empty) {
+    grid-template-columns: max-content max-content;
+    padding-left: .1em;
+    text-align: right;
+    font-size: .9em;
+    font-family: var(--base-font-family-input);
+    white-space: nowrap;
+  }
+  & dd[id*="Stt"]:not(:empty)::after,
+  & dd[id*="SkillLv"]:not(:empty)::after {
+    content: '+';
+    display: inline;
+    margin-right: -.1rem;
+  }
+}
+#combo .combo-table .combo-out dd:nth-of-type(n+29) { /* 条件の５行目（デフォルトでは非表示） */
+  display: none;
+}
+#combo.original-renegade-mode .combo-table .combo-out dd:nth-of-type(n+29) { /* 条件の５行目（起源種のみ表示） */
+  display: grid;
+}
+#combo .combo-table .combo-note {
+  padding-top: .5rem;
+}
+#combo .annotate {
+  padding-top: .2em;
+}
+@media screen and (width <= 735px){
+  #combo .combo-table {
+    padding: .5em 0;
+    grid-template-columns: 1.5em 11fr;
+    grid-template-areas:
+      "HNDL NAME"
+      "COMB COMB"
+      "  IN   IN"
+      " OUT  OUT"
+      "NOTE NOTE"
+      "OTHR OTHR"
+    ;
+  }
+  #combo .combo-table .combo-name {
+    text-align: left;
+  }
+  #combo .combo-table .combo-combo {
+    display: block;
+  }
+  #combo .combo-table .combo-out .combo-cond .combo-condition-utility::before {
+    transform: scale(1.3);
+  }
+}
+
+.combo-condition-utility-menu {
+  display: block;
+  position: absolute;
+  width: auto;
+  height: auto;
+  background-color: var(--bg-color);
+  border: 1px solid var(--text-color);
+  font-size: 80%;
+  padding: 1.0rem;
+  border-radius: 1.2rem;
+  opacity: 0.98;
+  @media screen and (width <= 735px) {
+    font-size: 120%;
+  }
+  .item {
+    display: flex;
+    border-bottom: 1px dotted rgba(128, 128, 128, 0.5);
+    justify-content: flex-start;
+    align-items: center;
+    padding: 0.25em;
+    &:last-child {
+      border-bottom: none;
+    }
+    &:hover {
+      background-color: rgba(30, 144, 255, 0.2);
+      cursor: pointer;
+    }
+    &::before {
+      content: "▸";
+    }
+  }
+}
+
+#items {
+  margin-top: var(--box-v-gap);
+}
+#items table {
+  > thead th {
+    &:nth-child(1) { width:  11em !important; } /* 名称 */
+    &:nth-child(2) { width: 3.4em !important; } /* 常備化 */
+    &:nth-child(3) { width: 3.4em !important; } /* 経験点 */
+    &:nth-child(4) { width:   7em !important; } /* 種別 */
+    &:nth-child(5) { width:   7em !important; } /* 技能 */
+    &:nth-child(6) { width: 3.9em !important; } /* 命中  ／ドッジ */
+    &:nth-child(7) { width: 5.2em !important; } /* 攻撃力／行動 */
+    &:nth-child(8) { width: 3.9em !important; } /* ガード／装甲値 */
+    &:nth-child(9) { width: 3.9em !important; } /* 射程 */
+    &:last-child   { width: auto !important;  } /* 解説 */
+  }
+  > tbody td {
+    vertical-align: top;
+    padding: .4rem 0 0;
+  }
+  #item-total-stock,
+  #item-max-stock { text-wrap: nowrap; }
+  
+}
+@media screen and (width <= 735px){
+  #items .box { overflow-x: auto; }
+  #items table  {
+    table-layout: fixed;
+    > thead th {
+      &:nth-child(1) { width:  11em !important; } /* 名称 */
+      &:nth-child(2) { width:   4em !important; } /* 常備化 */
+      &:nth-child(3) { width:   4em !important; } /* 経験点 */
+      &:nth-child(4) { width:   8em !important; } /* 種別 */
+      &:nth-child(5) { width:   8em !important; } /* 技能 */
+      &:nth-child(6) { width: 4.5em !important; } /* 命中  ／ドッジ */
+      &:nth-child(7) { width:   6em !important; } /* 攻撃力／行動 */
+      &:nth-child(8) { width: 4.5em !important; } /* ガード／装甲値 */
+      &:nth-child(9) { width: 4.5em !important; } /* 射程 */
+      &:last-child   { width:  16em !important; } /* 解説 */
+    }
+    > tbody td { width: auto !important; }
+  }
+}
+
+#history table colgroup {
+  :first-child{ width: 1.4em; }
+  .date       { width:   6em; }
+  .title      { width:  12em; }
+  .exp        { width:   6em; }
+  .apply      { width: 3.5em; }
+  .gm         { width:   6em; }
+  .member     { width:  auto; }
+}
+@media screen and (width <= 735px){
+  #history table {
+    table-layout: fixed;
+    > colgroup {
+      .title  { width: 12em; }
+      .member { width: 16em; }
+    }
+  }
+}
+#history table thead {
+  & td.apply {
+    border-left: 0px hidden;
+    font-size: 83%;
+  }
+  & td.apply input {
+    transform: none;
+    vertical-align: text-top;
+  }
+}
+#history table tbody {
+  & td.exp input {
+    width: 100%;
+    border-radius: 5px 0 0 5px;
+  }
+  & td.apply {
+    position: relative;
+    & label {
+      position: absolute;
+      top: .5rem;
+      left: 0;
+      right: .2rem;
+      bottom: .2rem;
+      display: block;
+      margin: 0;
+      border: 1px solid var(--box-input-border-color);
+      border-radius: 0 5px 5px 0;
+      border-left: 0;
+      > input {
+        padding: 0;
+        vertical-align: text-top;
+        transform: none;
+      }
+      > b {
+        font-size: 90%;
+      }
+      > input:not(:checked) + b {
+        opacity: 0.5;
+        font-weight: normal;
+      }
+      &:hover {
+        background-color: var(--bg-color);
+        > input:not(:checked) + b {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}
+
+
+
+#exp-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1em;
+  padding: .2rem 0 .5rem;
+  border-radius: 0;
+  border-width: .2rem 0;
+  background: var(--bg-color);
+  font-size: 85%;
+  font-weight: bold;
+  
+  .minus {
+    color: #e70;
+  }
+}

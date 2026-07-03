@@ -1,0 +1,104 @@
+@charset "utf-8";
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-xx.png);
+  @media screen and (width <= 735px){
+    background-size: auto, 70%;
+  }
+}
+
+
+
+/* // List
+---------------------------------------------------------------------------------------------------- */
+.list table tr {
+    /* 7つの列幅をネクロニカ用に調整 */
+    grid-template-columns: 24rem 0.7fr 7em 0.8fr 0.8fr 4.5em 0.6fr;
+    grid-template-areas:
+      "NAME   PL  AGE WRK SYN EXP DATE"
+      "NAME   PL  AGE WRK SYN EXP DATE"
+      "NAME TAGS TAGS TAGS TAGS TAGS DATE"
+    ;
+}
+
+.list table .name     { grid-area: NAME; }
+.list table .player   { grid-area:   PL; }
+
+/* ▼ 享年と暗示を綺麗に縦2段に並べる ▼ */
+.list table th.age,
+.list table td.age    { 
+  grid-area: AGE; 
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0; /* 内部の要素で余白を管理するためリセット */
+}
+.list table th.age a {
+  width: 100%;
+  flex: 1; /* 縦幅を均等に半分ずつ取る */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.list table th.age a:first-child {
+  border-bottom: 1px dotted var(--box-inside-border-color); /* 享年と暗示の間に薄い区切り線を引く */
+}
+.list table td.age > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+.list table td.age > span.anji { 
+  font-size: 85%; 
+}
+
+
+
+.list table .exp      { grid-area:  EXP; font-weight: bold; font-family: var(--font-proportional); }
+.list table .tags     { grid-area: TAGS; }
+.list table .date     { grid-area: DATE; }
+
+/* 表頭の結合設定 */
+.list table thead th.age,
+.list table thead th.works,
+.list table thead th.syndrome,
+.list table thead th.exp,
+.list table thead th.date {
+  grid-row: 1 / 3;
+}
+
+
+/* ▼ 2. データ(td)側の処理：セル内で縦2段に並べて中央寄せにする ▼ */
+.list table td.syndrome {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+.list table td.syndrome span {
+  display: block;
+  font-size: 90%;
+  line-height: 1.3;
+}
+.list table td.syndrome span:first-child {
+  font-weight: bold;
+  font-size: 100%;
+}
+.list table .works    { grid-area:  WRK; font-weight: bold; text-align: center; }
+
+/* // List-Simple
+---------------------------------------------------------------------------------------------------- */
+.list ul li a::before {
+  content: attr(data-lv);
+}
+
+
+/* ////////// LayerEnd ////////// */
+}

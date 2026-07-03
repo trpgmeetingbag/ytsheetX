@@ -1,0 +1,195 @@
+@charset "utf-8";
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-wheel.png);
+  background-blend-mode: normal, normal;
+  .night & {
+    background-blend-mode: hard-light, hard-light;
+  }
+  @media screen and (width <= 735px){
+    background-size: auto, 100%;
+    background-position-x: 0, 15vw;
+  }
+}
+/* // List
+---------------------------------------------------------------------------------------------------- */
+.list table tr {
+  grid-template-columns: 26rem 0.8fr 3em 0.7fr 4.5em 1.9fr 0.7fr;
+  grid-template-areas:
+    "NAME   PL RACE RACE  LVL  CLS DATE"
+    "NAME   PL  GEN  AGE  EXP  CLS DATE"
+    "NAME TAGS TAGS TAGS TAGS TAGS DATE"
+  ;
+  & .name   { grid-area: NAME; }
+  & .player { grid-area:   PL; }
+  & .race   { grid-area: RACE; }
+  & .gender { grid-area:  GEN; }
+  & .age    { grid-area:  AGE; }
+  & .rank   { grid-area: RANK; }
+  & .lv     { grid-area:  LVL; }
+  & .exp    { grid-area:  EXP; }
+  & .class  { grid-area:  CLS; }
+  & .geis   { grid-area: GEIS; }
+  & .tags   { grid-area: TAGS; }
+  & .date   { grid-area: DATE; }
+  
+  & td.lv {
+    font-size: 1.15em;
+    line-height: 1;
+  }
+  & td.class {
+    flex-direction: column;
+    font-size: 92%;
+  }
+  & td.race > div {
+    flex-grow: 1;
+    margin: 0 -6%;
+    transform: scaleX(0.88);
+  }
+  & td.class > div:empty {
+    display: none;
+  }
+  @media screen and (width <= 735px){
+    & {
+      grid-template-columns: 18rem 6em 2.8em 0.6fr 0.6fr 10em 4em;
+      grid-template-areas:
+        "NAME PL RACE RACE LVL CLS DATE"
+        "NAME PL  GEN  AGE EXP CLS DATE"
+      ;
+    }
+    & .geis { display: none; }
+  }
+}
+
+/* // List-Simple
+---------------------------------------------------------------------------------------------------- */
+.list ul li a::before {
+  content: 'Lv'attr(data-lv);
+}
+
+
+/* ////////// LayerEnd ////////// */
+}
+
+
+/* ==========================================
+   MGR用 キャラクター一覧テーブルレイアウト
+========================================== */
+.list table tr {
+  /* 各列の幅割り当て（名前｜PL｜性別年齢｜カバ機体｜CL経験｜クラス｜更新日） */
+  grid-template-columns: 20rem 1fr 4em 14em 4.5em 1.5fr 0.8fr !important;
+  grid-template-areas:
+    "NAME PL GEN_AGE COV_MEC LVL_EXP CLS DATE" !important;
+}
+
+/* 各セルをGridエリアにマッピング */
+.list table tr .name        { grid-area: NAME; }
+.list table tr .player      { grid-area: PL; }
+.list table tr .gender-age  { grid-area: GEN_AGE; }
+.list table tr .cover-mecha { grid-area: COV_MEC; }
+.list table tr .lv-exp      { grid-area: LVL_EXP; }
+.list table tr .class       { grid-area: CLS; }
+.list table tr .date        { grid-area: DATE; }
+
+/* ------------------------------------------
+   縦2段表示（フレックスボックス）のスタイリング
+------------------------------------------ */
+.list table td.gender-age,
+.list table td.cover-mecha,
+.list table td.lv-exp {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center; /* 中央揃え（機体名は左寄せにする場合は flex-start に変更） */
+  gap: 0.2em;
+}
+
+/* 文字サイズの調整 */
+.list table td.gender-age { font-size: 90%; }
+
+.list table td.cover-mecha .cover {
+  font-size: 85%;
+  color: var(--text-color-sub); /* カバーは少し薄い色に */
+}
+.list table td.cover-mecha .mecha {
+  font-weight: bold;
+}
+
+.list table td.lv-exp .lv {
+  font-size: 1.15em;
+  font-weight: bold;
+}
+.list table td.lv-exp .exp {
+  font-size: 85%;
+  color: var(--text-color-sub);
+}
+
+/* ------------------------------------------
+   クラス（ガーディアンクラスの強調表示など）
+------------------------------------------ */
+.list table td.class {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* 長い場合は折り返し */
+  align-items: center;
+  gap: 0 0.5em;
+  font-size: 95%;
+}
+
+.list table td.class b.guardian-class {
+  color: var(--text-color); /* 強調したい色があればここで指定 */
+}
+
+/* ==========================================
+   スマホ表示（幅735px以下）：MGRキャラクター一覧の1行完全固定レイアウト
+========================================== */
+@media screen and (max-width: 735px) {
+  /* 1. 見出しとデータの列幅を「％（パーセント）」で完全に一致させる */
+  .list table tr {
+    display: grid !important;
+    /* 全て足して100%になるように厳密に分割（スクロールバー発生を防止） */
+    grid-template-columns: 20% 12% 9% 21% 10% 18% 10% !important;
+    grid-template-areas:
+      "NAME PL GEN_AGE COV_MEC LVL_EXP CLS DATE" !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  /* 2. すべてのセルのはみ出しを禁止し、強制改行を適用する */
+  .list table th,
+  .list table td {
+    min-width: 0 !important; /* ★Grid/Flexの突き抜けを防ぐ最重要プロパティ */
+    padding: 2px 1px !important; /* 余白を極限まで削る */
+    font-size: 2.6vw !important; /* 画面幅に合わせて文字を縮小 */
+    
+    /* 英語や記号が連続しても枠内で強制的に改行させる */
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important; 
+  }
+
+  /* 3. クラス列が横に貫通する問題の鎮圧 */
+  .list table td.class {
+    display: block !important; /* Flexを解除し、素直なブロック要素に戻す */
+  }
+  .list table td.class > * {
+    display: inline !important; /* 内部の span や b もインラインにして自然な改行を促す */
+  }
+
+  /* 4. 微調整（文字の重なりやバランスの最適化） */
+  .list table td.lv-exp .lv {
+    font-size: 3vw !important;
+  }
+  .list table td.cover-mecha .cover {
+    font-size: 2.2vw !important;
+  }
+  .list table td.date {
+    font-size: 2.2vw !important;
+  }
+  .list table td.date div {
+    line-height: 1.1 !important; 
+  }
+}

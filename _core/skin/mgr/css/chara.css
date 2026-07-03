@@ -1,0 +1,1444 @@
+@charset "utf-8";
+
+
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-wheel.png);
+  background-blend-mode: normal, normal;
+  .night & {
+    background-blend-mode: hard-light, hard-light;
+  }
+  @media screen and (width <= 735px){
+    background-size: auto, 100%;
+    background-position-x: 0, 15vw;
+  }
+}
+/* // Layout
+---------------------------------------------------------------------------------------------------- */
+@media screen and (width >= 1400px){
+  body {
+    grid-template-columns: minmax(0, 1fr) minmax(auto, 1800px) minmax(0, 1fr);
+  }
+  header nav {
+    max-width: 1800px;
+  }
+  article{
+    max-width: 1760px;
+    display: grid;
+    grid-gap: 0 1.2rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr auto;
+    align-items: start;
+    padding: 0 1.2rem;
+    position: relative;
+  }
+  #area-name, #tags {
+    grid-column: span 2;
+  }
+  #column-skills {
+    grid-row: span 3;
+  }
+}
+
+/* // Font
+---------------------------------------------------------------------------------------------------- */
+#character-name,
+.words {
+  font-family: var(--base-font-family-min);
+}
+#character-name rt {
+  font-family: Arial,var(--base-font-family-min);
+}
+#level dd {
+  font-family: 'Verdana';
+}
+
+#classes dd,
+#area-items dd,
+#area-items td,
+#battle td,
+#battle th div,
+#other-rolls tbody th small,
+#levelup td {
+  font-family: var(--font-proportional);
+}
+#history table {
+  font-family: "Arial",var(--base-font-family-pr);
+}
+#cashbook p {
+  font-family: var(--base-font-family-mono);
+}
+
+/* // AreaTag
+---------------------------------------------------------------------------------------------------- */
+#tags .stage {
+  font-size: 90%;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* // Area-Items
+---------------------------------------------------------------------------------------------------- */
+
+#items {
+  grid-column: span 3;
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-left-radius: 0;
+  
+  & i.weight {
+    justify-content: space-between;
+    min-width: 3.4em;
+    margin: 0 1px;
+    padding-left: .4em;
+    white-space: nowrap;
+    &::before {
+      content: "\e13d";
+      font-family: "Material Symbols Outlined";
+      font-variation-settings: 'FILL' 1;
+      transform: scale(1.2) translateX(-.1em);
+    }
+  }
+}
+
+
+
+
+/* // Area-Equipments
+---------------------------------------------------------------------------------------------------- */
+
+#armaments .total span[data-name] {
+  display: grid;
+  grid-template-columns: .7em 1fr;
+  margin-bottom: -.2em;
+  &::before {
+    content: attr(data-name);
+    display: block;
+    transform: scale(0.7, 0.8);
+  }
+}
+
+
+
+
+/* // Skills
+---------------------------------------------------------------------------------------------------- */
+#skills {
+  position: relative;
+  margin-top: var(--box-v-gap);
+  @media screen and (width >= 1400px){
+    margin-top: 0;
+  }
+  @media screen and (1400px <= width <= 1600px){
+    .shorten { display: none; }
+  }
+}
+#skills table thead th {
+  vertical-align: bottom;
+
+  &:nth-child(n+4) { font-size: 90%; }
+
+  &:nth-child(1) { width: 3.5em; } /* 取得元 */
+  &:nth-child(2) { width: 3.0em; } /* 分類 */
+  &:nth-child(3) { width:  auto; } /* 名称 */
+  &:nth-child(4) { width: 2.2em; } /* Lv */
+  &:nth-child(5) { width: 8.4em; } /* タイミング */
+  &:nth-child(6) { width: 5.8em; } /* 判定 */
+  &:nth-child(7) { width: 5.8em; } /* 対象 */
+  &:nth-child(8) { width: 4.8em; } /* 射程 */
+  &:nth-child(9) { width: 2.4em; } /* コスト */
+  &:nth-child(10) { width:10.8em; } /* 使用条件 */
+  @media screen and (1400px <= width <= 1680px){
+    &:nth-child(6) { width: 5.2em; } /* 対象 */
+    &:nth-child(8) { width: 4.2em; } /* 射程 */
+    &:nth-child(9) { width: 3.1em; } /* コスト */
+  }
+  @media screen and (1400px <= width <= 1600px){
+    &:nth-child(5) { width: 5.4em; } /* タイミング */
+  }
+
+  &:nth-child(9) > div.thin {
+    display: block;
+    margin: 0 -.5em;
+    transform: scaleX(calc(2/3));
+  }
+}
+
+#skills table tbody td {
+  &:nth-child(n+2) {
+    font-family: var(--font-proportional);
+    font-feature-settings: "palt";
+  }
+  &:nth-child(1) {  } /* 取得元. */
+  &:nth-child(2) {  } /* 分類. */
+  &:nth-child(3) { font-weight: bold; } /* 名称 */
+  &:nth-child(4) {  } /* Lv */
+  &:nth-child(5) { font-size: 90%; } /* タイミング */
+  &:nth-child(6) { font-size: 90%; } /* 判定 */
+  &:nth-child(7) { font-size: 90%; } /* 対象 */
+  &:nth-child(8) { font-size: 90%; } /* 射程 */
+  &:nth-child(9) {  } /* コスト */
+  &:nth-child(10){ font-size: 90%; } /* 使用条件 */
+}
+
+
+#skills table tbody td.note {
+  padding-left: .5rem;
+  display: none;
+  &:empty::before {
+    content: '　';
+  }
+  & span.right {
+    float: right;
+    font-size: 90%;
+  }
+}
+#skills table tbody:hover td.note,
+#skills[data-full-open="true"] table tbody td.note {
+  display: table-cell;
+}
+
+#skills table tbody td.type,
+#skills table tbody td.category {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  > i {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: absolute;
+    font-style: normal;
+    font-weight: bold;
+  }
+}
+#skills p.right {
+  margin: 0;
+  padding-right: 5px;
+  font-size: 87%;
+  opacity: 0.9;
+}
+
+@media screen and (width <= 735px){
+  #skills table {
+    > thead {
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+    }
+    > thead tr,
+    > tbody tr {
+      display: grid;
+      grid-template-columns: 4em 3.4em 1.8em 5.2em 5.2em 5.5em 4.5em 2.1em auto;
+      border-width: 0 0 1px;
+    }
+    > tbody tr:last-child { border: 0; }
+    > thead th:nth-child(n) {
+      width: auto;
+    }
+    > thead th:nth-child(3) {
+      display: none;
+    }
+    > tbody td[rowspan] {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    > tbody td {
+      font-size: 100% !important;
+      border-width: 0 0 0 1px;
+      border-style: dotted;
+    }
+    > tbody td.name {
+      grid-row: 1; grid-column: 1 / span 9;
+      text-align: left;
+      padding-left: .5rem;
+      border-width: 0 0 1px;
+      border-style: solid;
+    }
+    > tbody td.note {
+      grid-row: 1; grid-column: 1 / span 9;
+      border-width: 0 0 1px;
+      border-style: solid;
+    }
+    > tbody td:first-child { border-left: 0; }
+    > tbody td:last-child  { border-right: 0; }
+    > tbody td span.shorten {
+      display: none !important;
+    }
+    > tbody td span.thin,
+    > tbody td span.thiner,
+    > tbody td span.thinest {
+      transform: scaleY(calc(1/0.9)) !important;
+      font-size: 90% !important;
+    }
+  }
+}
+
+/* // 最後の要素の底面に発生する罫線の重複を解消（DX準拠）
+---------------------------------------------------------------------------------------------------- */
+/* 非展開時、最後のパーツの2行目（効果行）が持つ上罫線を消すことで、外枠の底面との重複を防ぐ */
+
+/* 非展開時：2行目（解説の行）そのものを非表示にする（閲覧画面のみ） */
+#skills:not([data-full-open="true"]) table.data-table tbody tr:nth-child(2) {
+  display: none;
+}
+
+/* 展開時：2行目を表示する（閲覧画面のみ） */
+#skills[data-full-open="true"] table.data-table tbody tr:nth-child(2) {
+  display: table-row;
+}
+
+/* ホバー時にも2行目を展開する（閲覧画面のみ） */
+#skills:not([data-full-open="true"]) table.data-table tbody:hover tr:nth-child(2) {
+  display: table-row;
+}
+
+
+@media screen and (max-width: 736px) {
+  /* 1. テーブル全体をスクロール用の窓にする ＋ フォントサイズ縮小 */
+  #skills table.data-table.line-tbody {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 80%;
+  }
+
+  /* 2. colgroupと見出しの1列目（名称）を非表示 */
+  #skills table.data-table.line-tbody colgroup,
+  #skills table.data-table.line-tbody thead th:first-child {
+    display: none;
+  }
+
+  /* 3. 表の枠を「中身のサイズ」にピッタリ合わせる */
+  #skills table.data-table.line-tbody thead,
+  #skills table.data-table.line-tbody tbody {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  /* 4. データ行も効果テキスト行も、すべて共通のGridレールに乗せる */
+  #skills table.data-table.line-tbody thead tr,
+  #skills table.data-table.line-tbody tbody tr {
+    display: grid;
+    /* ご自身で導き出した完璧な固定幅の比率 */
+    grid-template-columns: 2.5em 3em 8em 8em 6em 5em 8em minmax(4em, auto);
+    width: 100%;
+  }
+
+  /* ★特効薬1：展開・ホバー時の「display: table-row」強制をキャンセルし Grid を維持する */
+  #skills[data-full-open="true"] table.data-table tbody tr:nth-child(2),
+  #skills:not([data-full-open="true"]) table.data-table tbody:hover tr:nth-child(2) {
+    display: grid !important;
+  }
+
+  /* 5. データ行（tr内のnote以外のセル）の配置を中央揃えにする */
+  #skills table.data-table.line-tbody th,
+  #skills table.data-table.line-tbody tbody tr td:not(.name):not(.note) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    text-align: center;
+  }
+
+  /* 6. 名称セル：Gridの1行目を丸ごと占領させて上に飛び出させる */
+  #skills table.data-table.line-tbody tbody td.name {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 4px 6px;
+    text-align: left;
+    font-weight: bold;
+  }
+
+  /* 7. 効果テキストセルをGridの端から端まで引き伸ばす */
+  #skills table.data-table.line-tbody tbody td.note,
+  #skills table.data-table.line-tbody tbody tr:nth-child(2) td {
+    grid-column: 1 / -1 !important; /* 絶対に端まで伸ばす */
+    display: block !important;      
+    width: 100% !important;
+    box-sizing: border-box;
+    text-align: left;
+    padding: 8px;
+    white-space: normal;
+  }
+
+  /* ★特効薬2：展開・ホバー時の「display: table-cell」強制をキャンセルし block を維持する */
+  #skills table.data-table.line-tbody tbody:hover td.note,
+  #skills[data-full-open="true"] table.data-table.line-tbody tbody td.note {
+    display: block !important;
+  }
+}
+
+
+/* // Free-Memo
+---------------------------------------------------------------------------------------------------- */
+#free-note,
+#free-history{
+  margin-top: var(--box-v-gap);
+}
+
+
+/* // History
+---------------------------------------------------------------------------------------------------- */
+#history {
+  margin-top: var(--box-v-gap);
+}
+#history table {
+  > thead {
+    .exp    { width: 4.6em; } /* 成長点 */
+    .pay    { width: 4.6em; } /* 上納点 */
+    .money  { width: 4.5em; } /* ゴールド */
+  }
+  > tbody tr td.pay:not(:empty)::before {
+    content: "-";
+    float: left;
+    margin-left: 2px;
+    font-size: 1.1rem;
+  }
+  & tr td.money {
+    text-align: right;
+    word-break: normal;
+    &:not(:empty)::after {
+      content: "G";
+      margin-left: 2px;
+      font-size: 1.1rem;
+    }
+  }
+}
+
+
+
+/* // Cashbook
+---------------------------------------------------------------------------------------------------- */
+#cashbook {
+  margin-top: var(--box-v-gap);
+  height: max-content;
+  overflow: hidden;
+}
+#cashbook > div {
+  max-height: 16em;
+  overflow: auto;
+
+  @media print {
+    max-height: initial;
+  }
+}
+#cashbook p {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+#cashbook b.cash {
+  padding: 2px 0;
+  font-weight: normal;
+  background: linear-gradient(to top, rgba(0,100,255,0.5) 0rem, rgba(0,100,255,0.3) .5rem, transparent .5rem);
+  &.plus {
+    background: linear-gradient(to top, rgba(0,255,100,0.5) 0rem, rgba(0,255,100,0.3) .5rem, transparent .5rem);
+  }
+  &.minus {
+    background: linear-gradient(to top, rgba(255,100,0,0.5) 0rem, rgba(255,100,0,0.3) .5rem, transparent .5rem);
+  }
+}
+
+/* ////////// LayerEnd ////////// */
+}
+
+
+
+
+
+/* 能力値テーブルのスタイル調整 */
+#status-main {
+  width: 100%;
+  table-layout: auto !important;
+}
+#status-main th, #status-main td {
+  text-align: center;
+  padding: 0.2em;
+}
+#status-main .total-row td,
+#status-main .bonus-row td {
+  font-size: 1.1em;
+}
+#status-main .bonus-row td b {
+  font-size: 1.2em;
+  color: var(--text-color);
+}
+
+/* 戦闘値テーブルの閲覧用調整 */
+#battle-table {
+  font-size: 0.85em;
+  width: 100%;
+  border-collapse: collapse;
+}
+#battle-table th, #battle-table td {
+  border: 1px solid var(--box-input-border-color);
+  padding: 2px;
+  text-align: center;
+}
+#battle-table .left { text-align: left; }
+#battle-table .total-row {
+  background-color: var(--box-head-bg-color-pale);
+  font-weight: bold;
+}
+
+
+
+/* ==========================================
+   閲覧画面（MGR用）：レイアウト完全上書き
+========================================== */
+
+/* 1. 全体ブロックの配置定義（新しいマップ） */
+#area-status {
+  min-height: 0 !important;
+  display: grid !important;
+  gap: var(--box-v-gap) var(--box-h-gap) !important;
+  grid-template-columns: 6fr 4fr !important;
+  /* ▼ 直系の子要素（4つ）だけをマップに配置します ▼ */
+  grid-template-areas:
+    "PER  IMG"
+    "EXP  IMG"
+    "LFP  IMG"
+  !important;
+}
+
+/* モバイル（スマホ）表示時は縦1列にする */
+@media screen and (max-width: 735px){
+  #area-status {
+    grid-template-columns: 1fr 180px !important; /* 左は残り全幅、右の画像領域は120px */
+    grid-template-areas:
+      "PER IMG"
+      "EXP IMG"
+      "LFP LFP"
+    !important;
+  }
+  /* #area-status {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "IMG" "PER" "EXP" "LFP"
+    !important;
+  } */
+}
+
+/* 2. 各直系要素への住所（grid-area）割り当て */
+#image, #image-none { grid-area: IMG; }
+#personal           { grid-area: PER; width: 100%; margin: 0; }
+#level-exp-area     { grid-area: EXP; width: 100%; margin: 0; }
+#personal-details   { grid-area: LFP; width: 100%; margin: 0; }
+
+/* 過去の不要なエリア指定を強制解除（混乱の元を絶つ） */
+#lifepath, #missions, #connections, #classes, #status, #battle-values, #defences, #armament-notes {
+  grid-area: auto !important;
+}
+
+/* ==========================================
+   レベル・クラスレベル・経験点エリア
+========================================== */
+#level-exp-area {
+  display: grid; /* flexではなくgridを使用 */
+  grid-template-columns: 1.3fr 1fr; /* 左(レベル)1.3：右(経験点)1 の比率 */
+  gap: var(--box-h-gap);
+}
+@media screen and (max-width: 735px){
+  #level-exp-area {
+    grid-template-columns: 1fr; /* スマホでは縦並び */
+  }
+}
+
+/* 左側の縦積みラッパー */
+.level-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--box-v-gap);
+  align-items: stretch; /* ◀ クラス表が横幅いっぱいに広がるように修正 */
+}
+
+/* キャラクターレベルの箱 */
+#level {
+  width: 10em;
+}
+
+/* （この下に /* ========================================== パーソナルデータ... が続きます） */
+
+/* ==========================================
+   パーソナルデータ（nc方式 box-union）
+========================================== */
+#personal.box-union {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* 綺麗に3等分 */
+  width: 100%;
+}
+
+/* ▼ ユーザー様発見の仕切り線ロジック ▼ */
+/* 2段目（4つ目以降）の上に横線を引く */
+#personal.box-union > dl:nth-child(n+4) {
+  border-top-width: 1px;
+  border-top-style: solid; /* 横は実線 */
+}
+/* 左端（1番目、4番目）以外の左に縦線を引く */
+#personal.box-union > dl:not(:nth-child(3n+1)) {
+  border-left-width: 1px;
+  border-left-style: dotted; /* 縦は点線（ゆとシート標準仕様） */
+}
+/* ▲ 仕切り線ロジックここまで ▲ */
+
+/* 機体名を2列分（2/3幅）に広げる */
+#personal.box-union .mecha-name {
+  grid-column: span 2;
+}
+
+/* 各ボックスを縦並び（見出しdtが上、データddが下）にする */
+#personal.box-union dl.box {
+  margin: 0; 
+  display: flex;
+  flex-direction: column;
+}
+
+/* 見出し(dt)を他の大見出しと同じく左寄せにする */
+#personal.box-union dl.box dt {
+  text-align: left;
+  padding-left: 0.5em;
+}
+
+/* データ(dd)を中央寄せにする */
+#personal.box-union dl.box dd {
+  margin: 0;
+  padding: 0.3em 0.5em 0.5em;
+  text-align: center;
+  font-size: 1.1em;
+  /* 高さを均等に埋めるための指定 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+
+/* クラスレベルテーブルの調整 */
+#classes {
+  width: 100%; 
+}
+#classes table.data-table {
+  table-layout: auto !important; /* fixed（強制均等）から auto（指定幅優先）に変更 */
+  width: 100%;
+}
+#classes table.data-table th {
+  text-align: left;
+  padding-left: 1em;
+  width: auto; /* こちらは「残りの幅をすべて吸収する」設定 */
+}
+#classes table.data-table td {
+  text-align: center;
+  font-weight: bold;
+  width: 5em !important; /* 数値部分の幅を絶対に 3.5em に死守させる */
+}
+
+/* ==========================================
+   レベル・クラスレベル・経験点エリア
+========================================== */
+/* 左側の縦積みラッパー */
+.level-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--box-v-gap);
+  align-items: flex-start; /* 子要素が横幅いっぱいに広がらないように制御 */
+}
+
+/* キャラクターレベルの箱：幅を半分に制限 */
+#level {
+  width: 10em
+}
+
+/* キャラクターレベルの大きな数値表示 */
+.level-value {
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.2em 0 0.3em;
+  line-height: 1;
+}
+
+
+/* ==========================================
+   経験点エリア（右側のレイアウト調整）
+========================================== */
+/* 左側の高さに釣られて箱が縦に伸びるのを防ぐ（上寄せに固定） */
+#exp {
+  align-self: start;
+}
+
+/* 経験点テーブルのスタイル（強制均等割りを解除） */
+#exp table.exp-table {
+  table-layout: auto !important; 
+  width: 100%;
+}
+
+/* 見出し(th)は残りの幅をすべて吸収させる */
+#exp table.exp-table th {
+  width: auto;
+  font-size: 0.85em;
+  padding: 0.1em 0.5em;
+  line-height: 1.3;
+}
+
+/* 小見出しの配置指定 */
+#exp table.exp-table th.center { text-align: center; }
+#exp table.exp-table th.right  { text-align: right; }
+
+/* データ部分(td)の幅を固定 */
+#exp table.exp-table td {
+  width: 5em !important; /* ★ここで数値部分の幅を死守する */
+  font-size: 0.85em;
+  padding: 0.1em 0.5em;
+  line-height: 1.3;
+  text-align: center;
+  font-weight: bold;
+}
+
+
+
+/* // Personal Details Union
+---------------------------------------------------------------------------------------------------- */
+#personal-details {
+  margin-top: var(--box-v-gap);
+  /* 解析結果に基づき、Union自体を元のライフパスのエリア(LFP)に固定します */
+  grid-area: LFP;
+}
+#personal-details > .box + .box {
+  border-top-width: 1px;
+}
+
+/* Lifepath (nc Style) */
+#lifepath table {
+  width: 100%;
+  border-style: solid hidden hidden;
+  table-layout: fixed;
+}
+/* tbody単位で背景色を適用（line-tbodyの挙動を再現） */
+#lifepath tbody:nth-of-type(even) :is(th, td) {
+  background-color: var(--box-even-rows-bg-color);
+}
+#lifepath th.left {
+  border-width: 1px;
+  border-style: solid dotted hidden;
+  padding: .3rem 0 0 .3rem;
+  text-align: left;
+  line-height: 1;
+  font-weight: bold; /* ◀ 出自・経験・邂逅の見出しを太字に */
+}
+#lifepath td.center {
+  border-width: 1px;
+  border-style: hidden dotted solid;
+  text-align: center;
+  padding: .1rem 0 .2rem;
+  font-size: 105%;
+  font-weight: normal; /* ◀ 入力内容はそのまま（通常重） */
+}
+#lifepath td.note {
+  border-width: 1px;
+  border-style: solid dotted;
+  padding: .2rem .5rem;
+  text-align: left;
+  font-size: 90%;
+  /* ◀ 段の中央に表示し、左右は左揃えを維持 */
+  display: table-cell;
+  vertical-align: middle; 
+}
+
+/* Missions */
+#missions ul {
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+#missions li {
+  list-style: none;
+  text-align: center;
+  padding: .4em .5em;
+  border-bottom-width: 1px;
+  border-bottom-style: dotted;
+  /* ◀ フォントサイズ（微調整はここで行えます） */
+  font-size: 90%; 
+}
+#missions li:nth-of-type(even) {
+  background-color: var(--box-even-rows-bg-color);
+}
+#missions li:last-child {
+  border-bottom-style: hidden;
+}
+
+/* Connections */
+#connections table {
+  width: 100%;
+  table-layout: fixed;
+  border-style: solid hidden hidden;
+}
+#connections th {
+  padding: .3rem 0 .2rem;
+  font-weight: normal;
+  font-size: 90%;
+}
+#connections td {
+  padding: .2em;
+  text-align: center;
+  /* ◀ フォントサイズ（微調整はここで行えます） */
+  font-size: 90%; 
+}
+#connections td.joubi {
+  font-size: 110%;
+}
+#connections td.note {
+  text-align: left;
+  padding: .2em .6em;
+  font-size: 80%;
+  border-top-width: 1px;
+  border-top-style: dotted;
+  border-left-width: 1px;
+  border-left-style: dotted;
+}
+#connections tbody:nth-of-type(even) td {
+  background-color: var(--box-even-rows-bg-color);
+}
+/* Connections の列幅指定 */
+#connections th.joubi    { width: 2em; }
+#connections th.relation { width: 33%; }
+#connections th.name     { width: auto; }
+
+/* // Layout Gaps
+---------------------------------------------------------------------------------------------------- */
+/* 能力値以降のボックスに2mm相当(var(--box-v-gap))の隙間を適用 */
+#status,
+#battle-values,
+#weaponry,
+#mecha-data,
+#kagos,
+#skills,
+#items,
+#free-note,
+#history {
+  margin-top: var(--box-v-gap) !important;
+}
+
+
+
+/* // Status Display Toggle
+---------------------------------------------------------------------------------------------------- */
+/* デフォルトでは内訳行を非表示にする */
+#status-main .breakdown-row {
+  display: none;
+}
+
+
+/* 表示切り替えクラスが付与された時の挙動 */
+#status-main.show-breakdown .breakdown-row {
+  display: table-row;
+}
+
+/* // Status / Ability Values Layout
+---------------------------------------------------------------------------------------------------- */
+#status-main {
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* 見出し列と等幅列の幅指定 */
+#status-main .name {
+  width: 12em; 
+  text-align: right;
+  padding-left: 0.8em;
+}
+
+#status-main .ability-col {
+  width: auto;
+}
+
+#status-main th,
+#status-main td {
+  border-width: 1px;
+  border-style: solid dotted;
+  padding: 0.2rem;
+  text-align: center;
+}
+
+
+
+
+/* // Layout Gaps (再定義)
+---------------------------------------------------------------------------------------------------- */
+/* 能力値以降のボックスに隙間を適用 */
+#status,
+#battle-values,
+#defences,
+#armament-notes,
+#kagos,
+#skills,
+#items,
+#free-note,
+#history {
+  margin-top: var(--box-v-gap) !important;
+}
+
+/* ボタンの配置 */
+#status h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#status .open-button {
+  position: static;
+  margin-left: auto;
+}
+
+
+
+/* // Battle Table Styling
+---------------------------------------------------------------------------------------------------- */
+#battle-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* ▼ 固定幅の調整箇所 ▼ */
+#battle-table .col-equip { width: 2.2em; } /* 装列 */
+#battle-table .col-part  { width: 5.5em; } /* 部位列 */
+#battle-table .col-name  { width: 14em;  } /* 名称列 */
+/* ▲ 固定幅の調整箇所 ▲ */
+
+#battle-table .col-battle { width: auto; }
+
+/* 武装行の攻撃列を半透明化 */
+#battle-table tr.is-weapon td.col-atk {
+  opacity: 0.5;
+}
+
+/* クラス修正行の名称列：背景を少し暗くして見出し感を出す（任意） */
+#battle-classes-area tr {
+  font-size: 0.95em;
+}
+#battle-classes-area .col-name {
+  background-color: var(--box-head-bg-color-pale);
+  font-weight: bold;
+}
+
+
+.heading-controls {
+  display: flex !important;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.heading-controls select {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--box-input-border-color);
+}
+
+#battle-toggle-btn {
+  position: static !important;
+}
+
+/* ヘッダーのコントロール */
+#battle-values h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.heading-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.heading-controls select {
+  font-size: 0.8rem;
+  padding: 0.1rem;
+}
+
+
+/* // Battle Table Display Logic
+---------------------------------------------------------------------------------------------------- */
+/* デフォルト（簡易表示）: breakdown-row を隠す */
+#battle-table .breakdown-row,
+#weapon-table .breakdown-row,
+#mecha-data-table .breakdown-row {
+  display: none !important;
+}
+
+
+
+/* ヘッダーのコントロール再表示（消失対策） */
+#battle-values h2 {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+.heading-controls {
+  display: flex !important;
+  gap: 0.5rem;
+}
+
+
+
+/* // Weaponry Table Layout
+---------------------------------------------------------------------------------------------------- */
+#weapon-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 列幅の固定指定 */
+#weapon-table .col-part  { width: 5.5em; }
+#weapon-table .col-name  { width: 14em; }
+#weapon-table .col-atk-total { width: 7em; }
+#weapon-table .col-range { width: 4.5em; }
+#weapon-table .col-cost  { width: 4.5em; }
+#weapon-table .col-ammo  { width: 3.5em; }
+#weapon-table .col-type  { width: auto; }
+
+#weapon-table tbody td {
+  padding: 0.3rem 0.2rem;
+  text-align: center;
+  border-width: 1px;
+  border-style: solid dotted;
+  font-size: 90%;
+}
+#weapon-table tbody td.left {
+  text-align: left;
+}
+
+#weapon-table td.note {
+  text-align: left;
+  padding: 0.2rem 0.6rem;
+  font-size: 85%;
+  border-top: 1px dotted var(--box-inside-border-color);
+}
+
+/* 2行セットでのストライプ（コネクションと同様のロジック） */
+#weapon-table tbody:nth-of-type(even) td {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+/* // Mecha Data Table Layout (機体データ)
+---------------------------------------------------------------------------------------------------- */
+#mecha-data-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 固定幅カラム */
+#mecha-data-table .col-part { width: 5.5em; }
+#mecha-data-table .col-name { width: 12em; }
+#mecha-data-table .col-type { width: 10em; }
+#mecha-data-table .col-size { width: 4em; }
+
+/* 等幅カラム（防御修正8列 + サイズ1列 = 計9列） */
+#mecha-data-table .col-def {
+  width: auto;
+}
+
+/* ▼ ここを修正：tfoot td を追加し、合計行の各列に縦線（点線）を描画 ▼ */
+#mecha-data-table th,
+#mecha-data-table tbody td,
+#mecha-data-table tfoot td {
+  padding: 0.3rem 0.2rem;
+  text-align: center;
+  border-width: 1px;
+  border-style: solid dotted;
+  font-size: 90%;
+}
+#mecha-data-table tbody td.left {
+  text-align: left;
+}
+
+/* 装備解説(備考)行 */
+#mecha-data-table td.note {
+  text-align: left;
+  padding: 0.2rem 0.6rem;
+  border-top: 1px dotted var(--box-inside-border-color);
+}
+
+/* 2行セットでのストライプ（コネクション・武装と同様のロジック） */
+#mecha-data-table tbody:nth-of-type(even) td {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+/* ヘッダの境界線調整 */
+#mecha-data-table thead tr:first-child th {
+  border-bottom: 1px solid var(--box-input-border-color);
+}
+
+/* // Mecha Data Table Layout (合計行の装飾)
+---------------------------------------------------------------------------------------------------- */
+#mecha-data-table .total-row th,
+#mecha-data-table .total-row td {
+  background-color: var(--box-head-bg-color-pale);
+  font-weight: bold;
+  /* 前回追加した不要な上線(border-top: 2px...)は削除しました */
+}
+#mecha-data-table .total-row th {
+  text-align: right;
+  padding-right: 0.5rem;
+}
+
+/* デッドスペース（入力不可エリアのグレーアウト） */
+.dead-space {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+/* 詳細表示ボタン（show-detailクラス）が有効な場合の振る舞い */
+#battle-table.show-detail .breakdown-row,
+#weapon-table.show-detail .breakdown-row,
+#mecha-data-table.show-detail .breakdown-row {
+  display: table-row !important;
+}
+#battle-table.show-detail tbody.breakdown-row,
+#weapon-table.show-detail tbody.breakdown-row,
+#mecha-data-table.show-detail tbody.breakdown-row {
+  display: table-row-group !important;
+}
+
+
+#kagos { grid-area: KAG; width: 100%; }
+
+/* 加護テーブルのスタイル */
+#kagos table.data-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 列幅の指定 */
+#kagos table.data-table th:nth-child(1) { width: 12em; } /* 「名称」列（固定幅） */
+#kagos table.data-table th:nth-child(2) { width: auto; } /* 「効果」列（残り全幅） */
+
+#kagos table.data-table th, 
+#kagos table.data-table td {
+  border: 1px solid var(--box-input-border-color);
+  text-align: center;
+  padding: 2px 4px;
+}
+#kagos table.data-table td.left {
+  text-align: left;
+}
+
+/* // Joubika Summary Area (アイテム合計・常備化計算)
+---------------------------------------------------------------------------------------------------- */
+.joubika-total-area {
+  margin-top: var(--box-v-gap);
+  padding: 0.6rem 1rem;
+  background-color: var(--box-head-bg-color-pale);
+  border: 1px solid var(--box-outside-border-color);
+  border-radius: 5px;
+  text-align: right;
+  line-height: 1.6;
+}
+
+.joubika-summary-line {
+  font-size: 0.85em;
+  opacity: 0.8;
+  border-bottom: 1px dotted var(--box-inside-border-color);
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.2rem;
+}
+
+.joubika-result-line {
+  font-size: 1.05em;
+}
+
+.joubika-result-line b {
+  font-size: 1.2em;
+  color: var(--text-color);
+}
+
+/* ポイント残余の強調 */
+#joubika-rest {
+  font-family: var(--font-proportional);
+  font-weight: bold;
+}
+
+/* 各要素をマップの記号に割り当て */
+#personal      { grid-area: PER; width: 100%; }
+#lifepath      { grid-area: LPT; width: 100%; }
+#missions      { grid-area: MIS; width: 100%; }
+#connections   { grid-area: CON; width: 100%; }
+#classes       { grid-area: CLS; width: 100%; }
+#image, #image-none { grid-area: IMG; }
+#status        { grid-area: STT; width: 100%; }
+#battle-values { grid-area: BTL; width: 100%; }
+
+
+
+
+
+
+
+
+
+
+
+
+#defences table.data-table th, 
+#defences table.data-table td,
+#armament-notes table.data-table th, 
+#armament-notes table.data-table td {
+  border: 1px solid var(--box-input-border-color);
+  text-align: center;
+  padding: 2px 4px;
+}
+#defences table.data-table {
+  font-size: 0.9em;
+}
+#armament-notes table.data-table td.left {
+  text-align: left;
+}
+
+
+
+
+
+/* ==========================================
+   特技（スキル）テーブルの列幅調整（MGR仕様）
+========================================== */
+#skills table {
+  table-layout: fixed; /* 全てを固定値で制御するため追加 */
+  width: 100%;
+}
+
+#skills table thead th {
+  &:nth-child(1) { width: 12em;  } /* 名称 */
+  &:nth-child(2) { width: 1.6em; } /* Lv */
+  &:nth-child(3) { width: 3.8em; } /* 分類 */
+  &:nth-child(4) { width: 7.9em; } /* タイミング */
+  &:nth-child(5) { width: 5.9em; } /* 対象 */
+  &:nth-child(6) { width: auto; } /* 射程 */
+  &:nth-child(7) { width: 5.9em; } /* 代償 */
+  &:nth-child(8) { width: 8em; } /* 取得元 */
+  &:nth-child(9) { width: 7.5em;  } /* 参照（※） */
+}
+
+/* ※補足：テーブル全体を横幅100%に保つため、最後の「参照」列のみ auto とし、
+　残りの余白を全て吸収させる設定にするのがCSSレイアウトとして最も綺麗に仕上がります。
+　もし「参照」も絶対に固定幅にしたい場合は、auto をやめて 6em 等に変更し、
+  代わりに「名称」列を auto にしてみてください。
+*/
+
+/* 取得元と分類の装飾リセット */
+#skills table tbody td.type,
+#skills table tbody td.category {
+  padding: 2px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+
+/* ==========================================
+   アイテムセクションのスタイル調整
+========================================== */
+#items {
+  width: 100%;
+  margin-bottom: var(--box-v-gap);
+}
+#items h3.item-head {
+  font-size: 1.05em;
+  font-weight: bold;
+  border-bottom: 2px solid var(--box-input-border-color);
+  margin: 1em 0 0.3em;
+  padding-left: 0.5em;
+}
+/* アイテムが一番上の場合はマージンを減らす */
+#items h3.item-head:first-of-type {
+  margin-top: 0.5em;
+}
+
+
+/* アイテム欄の列幅指定（安全なクラス指定版） */
+#items table.data-table th.col-name     { width: 12em; } /* 名称 */
+#items table.data-table th.col-joubi    { width: 4.5em; } /* 常備化 */
+#items table.data-table th.col-timing   { width: 7em; }  /* タイミング */
+#items table.data-table th.col-property { width: 4em; }  /* 財産P */
+#items table.data-table th.col-note     { width: auto; /*text-align: left; padding-left: 1em;*/ } /* 解説 */
+
+#items table.data-table th, 
+#items table.data-table td {
+  border: 1px solid var(--box-input-border-color);
+  text-align: center;
+  padding: 2px 4px;
+}
+#items table.data-table td.left {
+  text-align: left;
+}
+
+.joubika-total-area {
+  text-align: right;
+  margin-top: 0.8em;
+  padding: 0.5em;
+  background-color: var(--box-head-bg-color-pale);
+  border: 1px solid var(--box-input-border-color);
+  border-radius: 3px;
+}
+.joubika-total-area b {
+  font-size: 1.1em;
+  color: var(--text-color);
+}
+
+/* ==========================================
+   1〜4ページ目の完全固定レイアウト（PC閲覧時）
+========================================== */
+@media screen and (width >= 1400px) {
+  /* 1ページ目：左上（ステータス・装備） */
+  #area-status {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+  
+  /* 2ページ目：右上（特技・アイテム） */
+  #column-skills {
+    grid-column: 2 !important;
+    grid-row: 3 !important;
+  }
+  
+  /* 3ページ目：左下（容姿・経歴・メモ） */
+  #free-note {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+  }
+  
+  /* 4ページ目：右下（履歴） */
+  #column-history {
+    grid-column: 2 !important;
+    grid-row: 4 !important;
+  }
+}
+
+/* ==========================================
+   閲覧画面：極狭表示（スマホ）用レイアウト
+========================================== */
+@media screen and (max-width: 480px) {
+  /* ライフパス等の不要な箱を非表示にする */
+  #lifepath, #missions {
+    display: none !important;
+  }
+
+  /* ヘッダー部分をGridで再構成 */
+  #header-details {
+    display: grid !important;
+    grid-template-columns: 1fr 120px !important; /* 左にデータ、右に画像 */
+    grid-template-areas: "DATA IMG" !important;
+    gap: 10px;
+  }
+
+  /* 画像エリアの調整 */
+  #header-image {
+    grid-area: IMG;
+    width: 120px !important;
+    height: 160px !important;
+    display: block !important; /* 消えていた画像を表示 */
+  }
+
+  /* パーソナルデータ等の左寄せ配置 */
+  #header-personal {
+    grid-area: DATA;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 90%;
+  }
+
+  /* キャラクターレベル、クラス、経験点を1列に並べるための調整 */
+  .level, .class, .exp {
+    margin: 2px 0;
+  }
+
+
+  #weapon-table .col-part  { width: 5.5em; }
+#weapon-table .col-name  { width: 10em; }
+#weapon-table .col-atk-total { width: 7em; }
+#weapon-table .col-range { width: 4.5em; }
+#weapon-table .col-cost  { width: 4.5em; }
+#weapon-table .col-ammo  { width: 3.5em; }
+#weapon-table .col-type  { width: auto; }
+}
+/* ボックス間の垂直余白の適用 */
+.box.box-v-gap {
+  margin-top: var(--box-v-gap);
+}
+/* 特技取得履歴の調整 */
+#skill-history-table td.disabled-cell {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: transparent; /* 文字が入っていても見えないようにする */
+}
+
+#skill-history-table .skill-hist-item + .skill-hist-item {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: 2px;
+  padding-top: 2px;
+}
+/* 特技取得履歴：特技名のフォントサイズと折り返し調整 */
+#skill-history-table .skill-hist-item {
+  font-size: 0.8em; /* ★ここを 0.85em や 12px などに変更して好みのサイズに調整してください */
+  line-height: 1.3;
+  word-wrap: break-word; /* 長い特技名が枠を突き破らないようにする安全策 */
+}
+
+/* ==========================================
+   全要素の「右端めり込み（横幅オーバー）」を根本解決する全体設定
+========================================== */
+
+/* 1. 全ての要素の幅計算に枠線(border)と余白(padding)を含める魔法の指定 */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+
+
+
+
+/* ==========================================
+   全要素の「右端めり込み（横幅オーバー）」を根絶する最終防衛ライン
+========================================== */
+@media screen and (max-width: 736px) {
+  /* 1. ページ全体のはみ出し・横揺れを物理的に封印（100vwは絶対に使わず100%にする） */
+  /* html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important; 
+  } */
+
+  /* 2. すべての枠の幅計算を「ボーダー・余白込みでピッタリ100%」に強制 */
+  /* *, *::before, *::after {
+    box-sizing: border-box !important;
+  } */
+
+  /* 3. Gridレイアウトの自動膨張（長い文字による外側への押し出し）を無効化 */
+  /* article, .box, #area-status, #header-details, #personal.box-union, #level-exp-area {
+    max-width: 100% !important;
+  }
+  #area-status > *, #header-details > *, #personal.box-union > *, #level-exp-area > * {
+    min-width: 0 !important; 
+  } */
+
+  /* 4. 画面幅に収まらない表（戦闘値、武装、機体など）を、表の中だけで安全に横スクロールさせる */
+  /* （※特技欄だけでなく、すべての巨大な表にスクロール窓を適用します） */
+  /* .box > table {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  } */
+}

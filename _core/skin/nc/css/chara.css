@@ -1,0 +1,1403 @@
+@charset "utf-8";
+
+@layer system {
+/* // Body
+---------------------------------------------------------------------------------------------------- */
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-xx.png);
+  @media screen and (width <= 735px){
+    background-size: auto, 70%;
+  }
+}
+/* // Layout
+---------------------------------------------------------------------------------------------------- */
+@media screen and (width >= 1400px){
+  body {
+    grid-template-columns: minmax(0, 1fr) minmax(auto, 1800px) minmax(0, 1fr);
+  }
+  header nav {
+    max-width: 1800px;
+  }
+  article{
+    max-width: 1760px;
+    display: grid;
+    grid-gap: 0 1.2rem;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    padding: 0 1.2rem;
+    position: relative;
+  }
+  #area-name, #tags {
+    grid-column: span 2;
+  }
+  .column-status{
+    grid-row: span 2;
+  }
+  #area-battle {
+    grid-row: span 1;
+  }
+  #free-note {
+    grid-column: 1;
+  }
+  #enc-bonus {
+    grid-column: 2;
+    align-self: end;
+  }
+}
+/* // Font
+---------------------------------------------------------------------------------------------------- */
+#history {
+  font-family: "Kosugi","Arial",var(--base-font-family-jp);
+}
+#character-name,
+.words {
+  font-family: var(--base-font-family-min);
+}
+#character-name rt {
+  font-family: Arial,var(--base-font-family-min);
+}
+
+/* // Area-Status
+---------------------------------------------------------------------------------------------------- */
+/* // Area-Status
+---------------------------------------------------------------------------------------------------- */
+#area-status {
+  min-height: auto;
+  display: grid;
+  grid-gap: var(--box-v-gap) var(--box-h-gap);
+  /* カラム幅の比率は仮設定です。お好みに応じて微調整してください */
+  grid-template-columns: 0.8fr 1.2fr 1.5fr 2.1fr;
+  grid-template-rows: auto max-content max-content auto;
+  grid-template-areas:
+    "PER PER PER IMG"
+    "CLS CLS CST IMG"
+    "EXP GST GST IMG"
+    "KRM KRM KRM IMG"
+  ;
+}
+
+#area-status dd:empty::before,
+#area-status td:empty::before {
+  content: '　';
+}
+
+:is(#personal, #works-cover) dl {
+  display: grid;
+  grid-template-rows: max-content 1fr;
+  > dd {
+    min-width: 0;
+    line-height: 1;
+    align-self: center;
+    word-break: auto-phrase;
+    overflow-wrap: break-word;
+    /* ▼▼ 高さを変えるにはここに追記します ▼▼ */
+    min-height: 2.0em; /* 最低限の高さを確保する */
+    padding: 5px 0; /* 上下の余白を作る */
+  }
+}
+
+/* Grid Areas */
+#image-none,
+#image       { grid-area: IMG; }
+#personal    { grid-area: PER; }
+#class       { grid-area: CLS; }
+#status-base { grid-area: CST; }
+#status-grow { grid-area: GST; }
+#exp         { grid-area: EXP; }
+#karma       { grid-area: KRM; }
+
+
+
+
+
+
+
+
+/* スマートフォン等での表示崩れ防止 */
+@media screen and (width <= 735px){
+  #area-status {
+    grid-template-columns: 1fr 1.5fr 2fr;
+    grid-template-areas:
+      "PER PER IMG"
+      "CLS CLS IMG"
+      "CST CST IMG"
+      "GST GST GST"
+      "EXP EXP EXP"
+      "KRM KRM KRM"
+    ;
+  }
+  /* スマホ画面では合体を解除する */
+  #status-base { margin-left: 0; border-radius: var(--box-radius); border-left: 1px solid var(--box-border-color); }
+  #status-grow { margin-top:  0; border-radius: var(--box-radius); border-top:  1px solid var(--box-border-color); }
+  #class       { border-radius: var(--box-radius); }
+}
+
+/* Image */
+
+/* Personal */
+#personal {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  
+  > dl:not(:first-child) {
+    border-left-width: 1px;
+    border-left-style: dotted;
+  }
+}
+
+#personal.anji-long {
+  grid-template-columns: 1fr 1fr 1fr;
+  
+  > dl:nth-child(n+4) {
+    border-top-width: 1px;
+    border-left: none;
+    grid-column: 1 / -1; 
+    
+    > dd {
+      text-align: left;
+      padding-left: 0.8em;
+    }
+    > dt {
+      text-align: left;
+      padding-left: 0.5em;
+    }
+  }
+}
+
+
+
+
+
+
+
+/* // Layout / Alignment
+---------------------------------------------------------------------------------------------------- */
+/* ▼▼ ┓の形に合体させるトリックと高さ同期 ▼▼ */
+/* // Area-Status Grid 再定義
+---------------------------------------------------------------------------------------------------- */
+#area-status {
+  display: grid;
+  grid-gap: var(--box-v-gap) var(--box-h-gap);
+  grid-template-columns: 0.8fr 1.2fr 1.5fr 2.1fr;
+  grid-template-areas:
+    "PER PER PER IMG"
+    "STU STU STU IMG" /* STU: クラス+強化値の統合ユニット */
+    "EXP GST GST IMG"
+    "KRM KRM KRM IMG"
+  ;
+}
+
+#status-upper-union { grid-area: STU; display: flex; }
+#status-grow        { grid-area: GST; }
+
+/* // ┓形状の統合と隙間消し
+---------------------------------------------------------------------------------------------------- */
+#status-upper-union {
+  border-bottom-right-radius: 0;
+}
+
+/* 統合ユニット内の各ボックス（.box）の設定 */
+#status-upper-union .box {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  /* background: none; を削除し、背景色だけを透明にする */
+  /* これにより sheet.css の .box で定義されているグラデーション背景画像が有効になります */
+  background-color: transparent;
+}
+/* --- 大見出し（クラス・武装・変異・改造）のデザイン --- */
+#status-upper-union h2 {
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  font-weight: bold;
+  text-align: left;
+  color: inherit;
+  /* background: none; を削除。親要素（.box）のグラデーションがそのまま背景になります */
+  border-bottom: 1px solid var(--box-inside-border-color);
+  border-radius: 0;
+  /* sheet.css の dl.box > dt 等の設定に合わせてテキスト影を追加 */
+  text-shadow: 0px 0px .3em #fff;
+}
+/* ナイトモード時の影色調整 */
+.night #status-upper-union h2 {
+  text-shadow: 0px 0px .3em #000;
+}
+
+/* 左端と右端の角丸だけ残す */
+#class { border-top-left-radius: var(--box-radius) !important; border-bottom-left-radius: var(--box-radius) !important; }
+#stt-kaizo { border-top-right-radius: var(--box-radius) !important; }
+
+/* ボックス間の縦の境界線をドットにする */
+#status-upper-union .box + .box {
+  border-left: 1px dotted var(--box-inside-border-color);
+}
+
+
+/* 以前のヘッダ用ダミー空間は不要になったため非表示に */
+.class-thead-spacer {
+  display: none;
+}
+
+/* // クラス行のスタイルと背景色（交互）
+---------------------------------------------------------------------------------------------------- */
+:root {
+  --status-row-height: 3.5rem; /* 行の高さ */
+}
+
+#class dl {
+  position: relative;
+  height: var(--status-row-height);
+  box-sizing: border-box;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--box-inside-border-color);
+  
+}
+#class dl:last-child {
+  border-bottom: none;
+}
+#class dl:nth-of-type(even) {
+  background-color: var(--box-even-rows-bg-color); /* メインクラスの行が対象になる */
+}
+
+/* クラス左上の小見出し */
+#class dt {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 1.0rem;
+  line-height: 1;
+  color: var(--box-head-color);
+}
+#class dd {
+  font-weight: bold;
+}
+
+/* // 強化値（3分割列）のスタイル
+---------------------------------------------------------------------------------------------------- */
+.stt-base-col {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+/* 強化値の各行をクラス側と同じ高さ・レイアウトに統一 */
+.stt-base-col .stt-val-blank,
+.stt-base-col .stt-val {
+  height: var(--status-row-height);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  border-bottom: 1px solid var(--box-inside-border-color);
+}
+/* 最後の行は線を消す */
+.stt-base-col .stt-val:last-child {
+  border-bottom: none;
+}
+
+/* ポジションに対応する1行目をグレーアウト */
+.stt-base-col .stt-val-blank {
+  background-color: rgba(0,0,0,0.03);
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.02) 5px, rgba(0,0,0,0.02) 10px);
+}
+
+/* メインクラスに対応する行（2行目）を、クラス側と同じ偶数行背景色に */
+.stt-base-col .stt-val.main {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+/* 左側のクラス列：残りの幅をすべて埋める */
+#status-upper-union #class {
+  flex-grow: 1;
+}
+
+/* 武装・変異・改造の列幅を個別に微調整する場合 */
+#stt-buso  { flex-basis: 8rem; }
+#stt-heni  { flex-basis: 8rem; }
+#stt-kaizo { flex-basis: 8rem; }
+
+/* // 成長・合計テーブル（下段）との結合
+---------------------------------------------------------------------------------------------------- */
+
+/* // 下段：成長・合計テーブルのデザイン調整
+---------------------------------------------------------------------------------------------------- */
+/* // 下段：成長・合計テーブルのデザイン調整
+---------------------------------------------------------------------------------------------------- */
+/* // 下段：成長・合計テーブルのデザイン調整
+---------------------------------------------------------------------------------------------------- */
+#status-grow {
+  margin-top: calc(-1 * var(--box-v-gap));
+  border-top: none;
+  /* 左右と下の外枠の実線を明示的に追加 */
+  border-left: 1px solid var(--box-outside-border-color);
+  border-right: 1px solid var(--box-outside-border-color);
+  border-bottom: 1px solid var(--box-outside-border-color);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 5px !important;
+  border-bottom-right-radius: 5px !important;
+  
+  /* ▼ テーブルで角丸を有効にするための必須指定 ▼ */
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden; /* はみ出したセルの背景色を丸く切り取る */
+  
+  /* ▼重要：作成ボーナス行にかかるグラデーション背景を明示的に消去 */
+  background-image: none !important;
+  background-color: transparent;
+
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* table-layout を separate にしたため消えてしまう行の横線を、セル自体に付け直す */
+#status-grow tbody tr:not(:first-child) th,
+#status-grow tbody tr:not(:first-child) td {
+  border-top: 1px solid var(--box-inside-border-color);
+}
+
+/* --- 列幅の指定 --- */
+#status-grow th:first-child {
+  width: auto;
+  text-align: left;
+  padding-left: 0.8rem;
+  border-right: 1px solid var(--box-inside-border-color);
+  text-shadow: none; /* 見出しの影も消してフラットに */
+}
+
+/* 2〜4列目（数値）：8remに固定 */
+#status-grow td {
+  width: 8rem;
+  border-left: 1px dotted var(--box-inside-border-color);
+}
+
+/* --- 文字サイズの調整 --- */
+/* 合計以外の行（作成・成長・修正）を小さくする */
+#status-grow tr:not(.row-total) {
+  font-size: 0.85rem;
+}
+
+/* 合計行のデザイン */
+
+
+
+/* --- 行の背景色調整 --- */
+/* 共通CSS（sheet.css）によって偶数行のth, tdに指定される背景色を透明に戻す（二重適用＆白黒逆転の解消） */
+#status-grow tbody tr:nth-of-type(even) th,
+#status-grow tbody tr:nth-of-type(even) td {
+  background-color: transparent;
+}
+/* 奇数行（1行目:作成ボーナス、3行目:その他の修正）のセルに背景色をつける */
+#status-grow tbody tr:nth-of-type(odd) th,
+#status-grow tbody tr:nth-of-type(odd) td {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+/* Safariなど一部ブラウザの角丸はみ出し対策 */
+#status-grow tbody tr:last-child th:first-child {
+  border-bottom-left-radius: 4px;
+}
+#status-grow tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 4px;
+}
+
+
+@media screen and (width <= 735px){
+#stt-buso  { flex-basis: 4rem; }
+
+#stt-heni  { flex-basis: 4rem; }
+
+#stt-kaizo { flex-basis: 4rem; }
+
+#status-grow td {
+
+  width: 4rem;
+
+  border-left: 1px dotted var(--box-inside-border-color);
+
+}
+}
+
+#area-status dd:empty::before,
+#area-status td:empty::before {
+  content: '　';
+}
+
+:is(#personal, #works-cover) dl {
+  display: grid;
+  grid-template-rows: max-content 1fr;
+  > dd {
+    min-width: 0;
+    line-height: 1;
+    align-self: center;
+    word-break: auto-phrase;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Image */
+
+/* Personal */
+#personal {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  
+  > dl:not(:first-child) {
+    border-left-width: 1px;
+    border-left-style: dotted;
+  }
+}
+
+#personal.anji-long {
+  grid-template-columns: 1fr 1fr 1fr;
+  
+  > dl:nth-child(n+4) {
+    border-top-width: 1px;
+    border-left: none;
+    grid-column: 1 / -1; 
+    
+    > dd {
+      text-align: left;
+      padding-left: 0.8em;
+    }
+    > dt {
+      text-align: left;
+      padding-left: 0.5em;
+    }
+  }
+}
+
+
+
+
+
+@media (width <= 860px), (1400px <= width <= 1680px) {
+  #renegade {
+    grid-template-columns: 5em auto;
+  }
+  #breed dd span.shorten {
+    display: none;
+  }
+  #syndrome dd {
+    font-size: 0.9em;
+    transform: scaleY(calc(1/0.9));
+  }
+}
+@media screen and (width <= 735px){
+  #renegade {
+    grid-template-columns: 1fr;
+  }
+  #renegade dl:last-child {
+    border-width: 1px 0 0;
+  }
+  #breed dd span {
+    display: inline;
+  }
+}
+
+/* Sub-Status */
+/* #sub-status {
+  display: flex;
+  flex-wrap: wrap;
+  white-space:nowrap;
+  #max-hp     { flex-basis: 33.3%; }
+  #stock-pt   { flex-basis: 33.3%; }
+  #saving     { flex-basis: 33.3%; }
+  #initiative { flex-basis: 25%; }
+  #move       { flex-basis: 25%; }
+  #dash       { flex-basis: 25%; }
+  #magic-dice { flex-basis: 25%; }
+}
+#sub-status dl {
+  flex-grow: 1;
+  margin: -1px 0 0 -1px;
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-left-width: 1px;
+  border-left-style: dotted;
+  > dd b {
+    display: inline-block;
+    font-weight: normal;
+    margin-left: .5rem;
+    transform: scale(1.3) translateY(-.1rem);
+  }
+}
+@media screen and (1400px <= width <= 1550px){
+  #sub-status dl span.shorten {
+    font-size: 85%;
+  }
+}
+@media screen and (1400px <= width <= 1450px){
+  #sub-status dl span.shorten {
+    display: none;
+  }
+}
+@media screen and (width <= 767px){
+  #sub-status dl span.shorten {
+    font-size: 85%;
+  }
+}
+@media screen and (width <= 735px){
+  #sub-status dl span.shorten {
+    display: none;
+  }
+} */
+
+/* EXP */
+#exp {
+  display: grid;
+  grid-template-rows: max-content max-content 1fr;
+}
+#exp dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: end;;
+  margin: -5px 5px 0;
+  line-height: 1;
+  white-space: nowrap;
+  > * {
+    border-width: 0 0 .1rem;
+    border-style: solid;
+  }
+  > dt {
+    grid-column: 1;
+    font-size: 80%;
+    padding: 0 0 3px;
+  }
+  > dd {
+    grid-column: 2;
+    text-align: right;
+    font-size: 120%;
+    padding: 2px 0 1px;
+  }
+}
+#exp .create-type {
+  padding: 0 2px;
+  font-size: 80%;
+  line-height: 1;
+  font-family: var(--font-proportional);
+  text-align: center;
+  align-self: center;
+  
+  article.forbidden & {
+    display: none;
+  }
+}
+@media screen and (width <= 735px){
+  #exp dl {
+    margin: -5px 2px 0;
+  }
+  #exp span.shorten {
+    display: none;
+  }
+}
+
+
+
+
+
+
+
+
+/* // Status / Skills
+---------------------------------------------------------------------------------------------------- */
+#status {
+  margin-top: var(--box-v-gap);
+}
+#status table {
+  width: 100%;
+  table-layout: fixed;
+}
+#status table thead {
+  border-width: 0 0 1px;
+  border-style: solid;
+  border-right: hidden;
+  & td {
+    width: 2.8em;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 130%;
+  }
+  > tr.breakdown {
+    display: none;
+    > th {
+      border-top-width: 1px;
+      border-top-style: solid;
+      font-weight: normal;
+      font-size: 90%;
+    }
+    > td {
+      font-weight: normal;
+      font-size: 100%;
+    }
+  }
+}
+#status table tbody {
+  border-style: none hidden hidden;
+  font-family: var(--font-proportional);
+  font-feature-settings: "palt";
+  & td {
+    border-width: 1px 0px;
+    border-style: solid;
+  }
+  & td.left {
+    padding-left: .5em;
+  }
+  & td.right {
+    padding-right: .1rem;
+    border-right-width: 1px;
+    font-size: 120%;
+    white-space: nowrap;
+  }
+  & td.right span.small {
+    display: inline-block;
+    margin: 0 -.3em 0 -1em;
+    font-size: 70%;
+    transform: scaleX(0.8);
+  }
+  & td.right::after {
+    content: 'Lv';
+    margin-left: .1em;
+    font-size: 70%;
+  }
+  & td.left:empty + td.right:empty::after {
+    content: '';
+  }
+}
+@media screen and (width <= 735px){
+  #status table thead td {
+    width: 2.2em;
+  }
+  #status table tbody {
+    font-size: 90%;
+    & td.left {
+      font-size: 90%;
+    }
+    & td.right {
+      padding-right: .15em;
+      font-size: 1.3em;
+    }
+    & td.right::after {
+      display: none;
+    }
+  }
+}
+
+
+/* // Karma / Memory / Miren
+---------------------------------------------------------------------------------------------------- */
+#karma,
+#memory,
+#miren {
+  margin-top: var(--box-v-gap);
+}
+
+/* 共通：テーブルの基本設定 */
+#karma table,
+#memory table,
+#miren table {
+  width: 100%;
+  > thead th {
+    padding-left: 0.5rem;
+    text-align: center;
+    vertical-align: bottom;
+  }
+  > tbody {
+    font-family: var(--font-proportional);
+    font-feature-settings: "palt";
+    & tr {
+      border-width: 1px 0 0;
+      border-style: solid;
+    }
+  }
+}
+
+/* ハンドル列の共通幅（編集画面用） */
+/* .edit-table > thead th:nth-child(1),
+.edit-table > colgroup col.handle {
+  width: 2em;
+} */
+
+/* カルマ */
+#karma table {
+  > tbody td {
+    &:nth-child(1) { width: 4em; text-align: center; } /* 達成 */
+    &:nth-child(2) { width: auto; } /* カルマ */
+  }
+}
+
+
+/* 記憶のカケラ */
+#memory table {
+  > thead th {
+    &:nth-child(1) { width: 14em; } /* タイトル */
+    &:nth-child(2) { width: auto; text-align: left;  } /* 記憶の内容 */
+  }
+  > tbody td{
+    &:nth-child(2) { padding-left: 0.5rem; text-align: left;  } /* 記憶の内容 */
+  }
+}
+
+
+/* 未練 (閲覧画面用) */
+#miren table {
+  /* ▼ 見出しを中央寄せ ▼ */
+  > thead th {
+    text-align: center;
+    padding-left: 0;
+  }
+  
+  > colgroup {
+    col:nth-child(1) { width: 12em; } /* 未練の対象 */
+    col.miren-to     { width: 3em; text-align: center; } /* への */
+    col:nth-child(3) { width: 4em; } /* 未練の内容 */
+    col:nth-child(4) { width: 6em;  } /* 狂気点 */
+    col:nth-child(5) { width: auto; } /* 発狂内容 */
+  }
+
+  > tbody td{
+    &:nth-child(5) { padding-left: 0.5rem; text-align: left;  } /* 記憶の内容 */
+  }
+
+
+
+  /* ▼ 「への」とその右側のセルの間の境界線を消す ▼ */
+  /* > tbody td.miren-to {
+    border-right: none;
+  }
+  > tbody td.miren-to + td {
+    border-left: none;
+  } */
+}
+
+
+/* 狂気点の表示 (◯●) */
+.insanity-dots {
+  font-size: 1.1em;
+  letter-spacing: 1px;
+}
+.insanity-dots[data-insanity="0"]::before { content: "◯◯◯◯"; color: #aaa; }
+.insanity-dots[data-insanity="1"]::before { content: "●◯◯◯"; }
+.insanity-dots[data-insanity="2"]::before { content: "●●◯◯"; }
+.insanity-dots[data-insanity="3"]::before { content: "●●●◯"; }
+.insanity-dots[data-insanity="4"]::before { content: "●●●●"; }
+.insanity-dots:not([data-insanity])::before { content: "◯◯◯◯"; color: #aaa; } /* fallback */
+
+
+@media screen and (width <= 735px){
+  /* スマホ等の狭い画面向け調整 */
+  #karma table,
+  #memory table,
+  #miren table {
+    font-size: 90%;
+  }
+  #memory table > thead th:nth-child(1) {
+    width: 8em; /* スマホ時のタイトル幅 */
+  }
+  .edit-table#memory-table > thead th:nth-child(2) {
+    width: 8em; /* スマホ時のタイトル幅(編集用) */
+  }
+  
+  #miren table > colgroup {
+    col:nth-child(1) { width: 7em; }
+    col.miren-to     { width: 3em; }
+    col:nth-child(3) { width: 4em; }
+    col:nth-child(4) { width: 6em; }
+  }
+
+}
+
+
+/* // サブステータス（行動値・内訳・ダミー・初期配置）のGrid配置
+---------------------------------------------------------------------------------------------------- */
+#sub-status {
+  margin-top: var(--box-v-gap);
+  display: grid;
+
+
+  
+  /* ▼ ここで左から順番に幅を指定します ▼ */
+  grid-template-columns: 
+    10rem       /* 1列目：最大行動値の幅（文字数に合わせて max-content でも可） */
+    20rem        /* 2列目：行動値内訳の幅（auto にすると中身の文字の長さに合わせて自動伸縮します） */
+    5rem        /* 3列目：ダミー要素の幅（ここを増やすと初期配置との間がさらに開きます） */
+    8rem       /* 4列目：初期配置の幅 */
+    1fr;        /* 5列目：右端の余白（残りのスペースをすべてここで吸収し、全体を左寄せにします） */
+
+  /* box間の基本的な隙間（上記ダミー要素の幅とは別に、要素間に標準で入る隙間です） */
+  grid-gap: var(--box-h-gap, 1rem); 
+  align-items: center;
+}
+
+/* 各box個別のマージンをリセット */
+#sub-status .box {
+  margin: 0;
+  height: 100%; /* 高さを揃える */
+}
+
+/* 中央の行動値内訳（枠なしのフラットな備考テキスト欄） */
+#status-action-breakdown {
+  font-size: 0.85rem;
+  color: var(--box-head-color);
+  padding: 0 0.5rem;
+  text-align: left;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 各box個別のマージンをリセットし、中央揃えを指定 */
+#sub-status .box {
+  margin: 0;
+  height: 100%; /* 高さを揃える */
+  text-align: center;
+}
+
+/* ▼ 見出し(dt)と数値(dd)の「左右の余白」だけをピンポイントで打ち消す最小コード */
+#sub-status .box dt,
+#sub-status .box dd {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* // スキル欄：標準テーブルレイアウトと列幅の固定
+/* // スキル・パーツ共通（DXベースのレイアウト）
+---------------------------------------------------------------------------------------------------- */
+#skills {
+
+  margin-top: var(--box-v-gap);
+}
+#skills, .parts {
+  position: relative;
+}
+#skills table thead th, .parts table thead th {
+  vertical-align: bottom;
+}
+/* 4列目(タイミング)以降のヘッダーは文字を少し小さく */
+#skills table thead th:nth-child(n+4), .parts table thead th:nth-child(n+4) {
+  font-size: 90%;
+}
+
+/* --- 列幅の指定 (PC表示時) --- */
+@media screen {
+  #skills table thead th:nth-child(2), .parts table thead th:nth-child(2) { width: auto;  } /* 名称 */
+  #skills table thead th:nth-child(3), .parts table thead th:nth-child(3) { width: 9em; } /* タイミング */
+  #skills table thead th:nth-child(4), .parts table thead th:nth-child(4) { width: 6em; } /* コスト */
+  #skills table thead th:nth-child(5), .parts table thead th:nth-child(5) { width: 6em; } /* 射程 */
+  #skills table thead th:nth-child(7), .parts table thead th:nth-child(7) { width: 8em; } /* カテゴリ */
+  #skills table thead th:nth-child(8), .parts table thead th:nth-child(8) { width: 12em; } /* 取得先 */
+}
+
+/* --- 上段セルのテキストスタイル --- */
+#skills table tbody td:nth-child(n+2), .parts table tbody td:nth-child(n+2) {
+  font-family: var(--font-proportional);
+  font-feature-settings: "palt";
+  text-align: center;
+}
+#skills table tbody td:nth-child(2), .parts table tbody td:nth-child(2) { font-weight: bold; padding-left: 0.5em; /*text-align: left;*/} 名称
+#skills table tbody td:nth-child(3), .parts table tbody td:nth-child(3) { font-size: 90%; } /* タイミング */
+#skills table tbody td:nth-child(4), .parts table tbody td:nth-child(4) { font-size: 90%; } /* コスト */
+#skills table tbody td:nth-child(5), .parts table tbody td:nth-child(5) { font-size: 90%; } /* 射程 */
+#skills table tbody td:nth-child(7), .parts table tbody td:nth-child(6) { font-size: 90%; font-weight: bold; } /* カテゴリ */
+#skills table tbody td:nth-child(8), .parts table tbody td:nth-child(8) { font-size: 90%; } /* 取得先 */
+
+/* // 効果欄（Note）の開閉ギミック (DX純正ロジック)
+---------------------------------------------------------------------------------------------------- */
+#skills table tbody td.note, .parts table tbody td.note {
+  padding-left: .5rem;
+  display: none;
+  text-align: left;
+}
+@media screen {
+  #skills table tbody:hover td.note, .parts table tbody:hover td.note {
+    display: table-cell;
+  }
+}
+#skills[data-full-open="true"] table tbody td.note,
+.parts[data-full-open="true"] table tbody td.note {
+  display: table-cell;
+}
+
+/* // カテゴリごとのグラデーション色付け
+---------------------------------------------------------------------------------------------------- */
+#skills tbody[data-category="通常技"],   .parts tbody[data-category="通常技"]   { background-image: linear-gradient(to right, rgba(0, 168, 0, 0.4), transparent); }
+#skills tbody[data-category="必殺技"],   .parts tbody[data-category="必殺技"]   { background-image: linear-gradient(to right, rgba(139, 0, 0, 0.4), transparent); }
+#skills tbody[data-category="行動値増加"], .parts tbody[data-category="行動値増加"] { background-image: linear-gradient(to right, rgba(218, 165, 32, 0.4), transparent); }
+#skills tbody[data-category="補助"],     .parts tbody[data-category="補助"]     { background-image: linear-gradient(to right, rgba(123, 104, 238, 0.4), transparent); }
+#skills tbody[data-category="妨害"],     .parts tbody[data-category="妨害"]     { background-image: linear-gradient(to right, rgba(240, 128, 128, 0.4), transparent); }
+#skills tbody[data-category="防御／生贄"], .parts tbody[data-category="防御／生贄"] { background-image: linear-gradient(to right, rgba(186, 85, 211, 0.4), transparent); }
+#skills tbody[data-category="移動"],     .parts tbody[data-category="移動"]     { background-image: linear-gradient(to right, rgba(189, 183, 107, 0.4), transparent); }
+
+/* // カテゴリ有効時（色が塗られている時）のみ、標準のゼブラ背景を無効化
+---------------------------------------------------------------------------------------------------- */
+/* .hide-category（オプション無効）が「付いていない」ボックスの中にある、
+   data-category（色指定）が書かれている tbody とその中身を透明化 */
+
+#skills:not(.hide-category) tbody[data-category="通常技"] tr,
+#skills:not(.hide-category) tbody[data-category="通常技"] td,
+.parts:not(.hide-category) tbody[data-category="通常技"] tr,
+.parts:not(.hide-category) tbody[data-category="通常技"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="必殺技"] tr,
+#skills:not(.hide-category) tbody[data-category="必殺技"] td,
+.parts:not(.hide-category) tbody[data-category="必殺技"] tr,
+.parts:not(.hide-category) tbody[data-category="必殺技"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="行動値増加"] tr,
+#skills:not(.hide-category) tbody[data-category="行動値増加"] td,
+.parts:not(.hide-category) tbody[data-category="行動値増加"] tr,
+.parts:not(.hide-category) tbody[data-category="行動値増加"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="補助"] tr,
+#skills:not(.hide-category) tbody[data-category="補助"] td,
+.parts:not(.hide-category) tbody[data-category="補助"] tr,
+.parts:not(.hide-category) tbody[data-category="補助"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="妨害"] tr,
+#skills:not(.hide-category) tbody[data-category="妨害"] td,
+.parts:not(.hide-category) tbody[data-category="妨害"] tr,
+.parts:not(.hide-category) tbody[data-category="妨害"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="防御／生贄"] tr,
+#skills:not(.hide-category) tbody[data-category="防御／生贄"] td,
+.parts:not(.hide-category) tbody[data-category="防御／生贄"] tr,
+.parts:not(.hide-category) tbody[data-category="防御／生贄"] td {
+  background-color: transparent !important;
+}
+#skills:not(.hide-category) tbody[data-category="移動"] tr,
+#skills:not(.hide-category) tbody[data-category="移動"] td,
+.parts:not(.hide-category) tbody[data-category="移動"] tr,
+.parts:not(.hide-category) tbody[data-category="移動"] td {
+  background-color: transparent !important;
+}
+/* // 「一覧にカテゴリを表示する」がオフの時の処理
+---------------------------------------------------------------------------------------------------- */
+#skills.hide-category .col-category,
+.parts.hide-category .col-category {
+  display: none !important;
+}
+#skills.hide-category tbody[data-category],
+.parts.hide-category tbody[data-category] {
+  background-image: none !important;
+}
+
+
+/* // 固有処理：非表示列の指定
+---------------------------------------------------------------------------------------------------- */
+/* 上昇行動値はスキルもパーツも非表示 */
+#skills .col-init,
+.parts .col-init {
+  display: none !important;
+}
+
+/* スキル欄でのみ非表示にする列 */
+#skills .col-damage,
+#skills .col-lv {
+  display: none !important;
+}
+
+
+/* // パーツ欄固有のCSS（スキルとの差分）
+---------------------------------------------------------------------------------------------------- */
+/* パーツ大見出し右端の攻撃判定値テキスト */
+/* パーツ大見出し右端の攻撃判定値テキスト */
+.parts .attack-roll {
+  float: right;
+  font-size: inherit; /* <h2>のフォントサイズをそのまま継承する */
+  font-weight: inherit; /* 太さも<h2>と合わせる（細くしたい場合は normal にしてください） */
+  color: var(--box-head-color);
+  margin-right: 1rem; /* 右端に少し広めの余白を作る（お好みで 0.5rem などに調整してください） */
+  padding-top: 0; /* サイズが同じになるため、以前の高さ微調整を解除 */
+}
+
+/* 損傷列とLV列の幅調整 */
+@media screen {
+  .parts table thead th:nth-child(1) { width: 3em; } /* 損傷 */
+  .parts table thead th:nth-child(9) { width: 4.5em; } /* LV */
+}
+
+.parts .col-damage {
+  text-align: center;
+  vertical-align: middle;
+}
+.parts .damage-checkbox {
+  transform: scale(1.2); /* 押しやすいように少し大きくする */
+  cursor: pointer;
+}
+
+/* // 最後の要素の底面に発生する罫線の重複（1pxの厚み）を解消
+---------------------------------------------------------------------------------------------------- */
+#skills table tbody:last-of-type,
+.parts table tbody:last-of-type {
+  border-bottom: none !important;
+}
+
+/* ※もし効果欄を展開した時に太くなる場合は、念のため以下も追加 */
+#skills table tbody:last-of-type tr:last-child,
+.parts table tbody:last-of-type tr:last-child {
+  border-bottom: none !important;
+}
+
+@media screen and (max-width: 736px) {
+  #skills table thead th:nth-child(2), .parts table thead th:nth-child(2) { width: auto;  } /* 名称 */
+  #skills table thead th:nth-child(3), .parts table thead th:nth-child(3) { width: 6em; } /* タイミング */
+  #skills table thead th:nth-child(4), .parts table thead th:nth-child(4) { width: 3em; } /* コスト */
+  #skills table thead th:nth-child(5), .parts table thead th:nth-child(5) { width: 3em; } /* 射程 */
+  #skills table thead th:nth-child(7), .parts table thead th:nth-child(7) { width: 4em; } /* カテゴリ */
+  #skills table thead th:nth-child(8), .parts table thead th:nth-child(8) { width: 6em; } /* 取得先 */
+
+
+}
+
+
+/* // 損傷パーツの表示モード切り替え（JS連携）
+---------------------------------------------------------------------------------------------------- */
+
+/* モード：グレーアウト（gray）の時、damageクラスを持つ tbody を半透明にしてモノクロにする */
+body[data-view-damage="gray"] .parts tbody.damage {
+  opacity: 0.4;             /* 全体を薄くする */
+  filter: grayscale(100%);  /* 色を完全に抜いて白黒（グレー）にする */
+  transition: opacity 0.3s, filter 0.3s; /* ふわっと切り替わるアニメーション（お好みで） */
+}
+
+/* モード：非表示（hide）の時、damageクラスを持つ tbody を完全に消す */
+body[data-view-damage="hide"] .parts tbody.damage {
+  display: none !important;
+}
+
+/* 損傷したパーツは、通常表示モードでも少しだけ背景を暗くするなどしたい場合はここに書けます */
+/* body[data-view-damage="normal"] .parts tbody.damage { ... } */
+
+/* // 最後の要素の底面に発生する罫線の重複を、どんな状態でも強制的に解消する
+---------------------------------------------------------------------------------------------------- */
+/* // 最後の要素の底面に発生する罫線の重複を完全に解消（JS連動）
+---------------------------------------------------------------------------------------------------- */
+/* // 最後の要素の底面に発生する罫線の重複を解消（準拠）
+---------------------------------------------------------------------------------------------------- */
+/* 非展開時、最後のパーツの2行目（効果行）が持つ上罫線を消すことで、外枠の底面との重複を防ぐ */
+#skills:not([data-full-open="true"]) table > tbody:last-of-type:not(:hover) > tr:last-child,
+.parts:not([data-full-open="true"]) table > tbody:last-of-type:not(:hover) > tr:last-child,
+#skills:not([data-full-open="true"]) table > tbody.last-visible:not(:hover) > tr:last-child,
+.parts:not([data-full-open="true"]) table > tbody.last-visible:not(:hover) > tr:last-child {
+  border-top: none !important;
+}
+
+
+/* // 強化パーツ取得状況の表並べ（ゆとシート純正テーブル風）
+---------------------------------------------------------------------------------------------------- */
+.parts-status-tables {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0; /* 大きな余白を完全に消去 */
+  margin: 0;
+}
+
+/* 3つの表を格納する列の設定 */
+.parts-status-tables > div {
+  flex: 1; /* 3列の幅を均等にする */
+  min-width: 220px;
+  border-right: 1px solid var(--box-inside-border-color); /* 各列の間に境界線を引く */
+}
+
+/* 一番右の列だけは境界線を消す */
+.parts-status-tables > div:last-child {
+  border-right: none;
+}
+
+/* 中のテーブル自体の外枠やマージンをリセット */
+.parts-status-tables table {
+  width: 100%;
+  margin: 0;
+  border: none !important;
+  border-collapse: collapse;
+}
+
+/* 大見出し（武装(X)など）の調整 */
+.parts-status-tables thead th {
+  text-align: center !important; /* 中央寄せ */
+  padding: 0.3em 0;
+  border-bottom: 1px solid var(--box-inside-border-color) !important; /* 下に実線を引く */
+}
+
+/* 左側の「取得可能枠」「取得状況」のセル */
+.parts-status-tables tbody th {
+  width: 6em;
+  white-space: nowrap;
+  text-align: right !important; /* 右寄せ */
+  padding-right: 0.8em !important; /* 右側に少し余白を空ける */
+  border-right: 1px dotted var(--box-inside-border-color); /* 中央に縦の点線を引く */
+  border-bottom: none !important;
+}
+
+/* 右側の「①②③」などのセル */
+.parts-status-tables tbody td {
+  text-align: left !important; /* 左寄せ */
+  padding-left: 0.8em !important; /* 左側に少し余白を空ける */
+  border-left: none !important; /* 左線は上のthの右線に任せる */
+  border-bottom: none !important;
+  letter-spacing: 2px; /* 記号同士がくっつきすぎないように少し隙間を開ける */
+}
+
+/* スマホ等で縦1列になった時の境界線の調整 */
+@media screen and (max-width: 735px) {
+  .parts-status-tables > div {
+    border-right: none; /* 縦並びの時は右線を消す */
+    border-bottom: 1px solid var(--box-inside-border-color); /* 代わりに下線を引く */
+  }
+  .parts-status-tables > div:last-child {
+    border-bottom: none;
+  }
+}
+
+
+/* // 寵愛点詳細と履歴エリアの配置固定（PC表示時）
+---------------------------------------------------------------------------------------------------- */
+@media screen and (min-width: 1400px) {
+  #area-history {
+    
+    grid-column: 2; /* メモの有無に関わらず、常に左カラムに固定する */
+  }
+}
+
+  #area-history {
+    
+   margin-top: var(--box-v-gap);
+  }
+
+/* // 寵愛点詳細（ゆとシート純正テーブルレイアウト）
+---------------------------------------------------------------------------------------------------- */
+#expDetail table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* // 見出し部分（★ここでサイズ調整が可能です！）
+---------------------------------------------------------------------------------------------------- */
+#expDetail th {
+  font-size: 0.95rem; /* ←【変更】元は0.85remでした。1remや110%など、お好みの大きさに変更してください */
+  line-height: 1.2;
+  padding: 0.4rem 0.2rem;
+  vertical-align: middle;
+  padding-bottom: 0.1rem;
+}
+
+/* 数値部分 */
+#expDetail td {
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-align: center;
+  position: relative;
+  /* ▼ 下の余白（1.2rem）を完全に削り落とし、標準的な余白に戻す */
+  padding: 0.6rem 0.2rem 0.2rem; 
+}
+
+/* 単位（点、個など） */
+#expDetail .exp-unit {
+  font-size: 0.85rem;
+  font-weight: normal;
+  margin-left: 0.1rem;
+}
+
+/* // 係数（×10など）を右下へ
+---------------------------------------------------------------------------------------------------- */
+#expDetail .exp-calc {
+  position: absolute;
+  top: auto; /* 上へのめり込みを解除 */
+  bottom: 0.1rem; /* ▼下からの距離を指定して右下に配置 */
+  right: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+/* // スマホ等での表示崩れ防止用のメディアクエリ内（@media screen and (max-width: 735px)）
+---------------------------------------------------------------------------------------------------- */
+  #expDetail .exp-calc {
+    font-size: 0.65rem;
+    right: 0.1rem;
+    top: auto; /* 上へのめり込みを解除 */
+    bottom: 0; /* スマホでも右下へ配置 */
+  }
+
+/* スマホ等での表示崩れ防止 */
+@media screen and (max-width: 735px) {
+  #expDetail th {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.1rem;
+  }
+  #expDetail td {
+    font-size: 1.1rem;
+  }
+  #expDetail .exp-unit {
+    font-size: 0.7rem;
+  }
+  #expDetail .exp-calc {
+    font-size: 0.65rem;
+    right: 0.1rem;
+  }
+}
+
+/* // Area-Battle
+---------------------------------------------------------------------------------------------------- */
+#area-battle {
+  position: relative;
+}
+@media screen and (width >= 1400px){
+  #area-battle {
+    margin-top: calc(-1 * var(--box-v-gap));
+  }
+}
+#area-battle > .box {
+  margin-top: var(--box-v-gap);
+}
+#area-battle > .box > table {
+  width: 100%;
+  border-style: hidden;
+}
+#area-battle > .box > table tbody tr {
+  border-width: 1px 0 0;
+  border-style: solid;
+}
+#area-battle > .box > table tbody td {
+  border-left-width: 1px;
+  border-style: dotted;
+}
+
+
+
+
+
+
+/* Exps */
+#exps h2:not(:first-child) {
+  margin-top: 0;
+}
+#exps thead {
+  word-break: keep-all;
+  font-size: 83%;
+  vertical-align: bottom;
+}
+@media screen and (width <= 735px){
+  #exps table {
+    margin-top: -1em;
+  }
+}
+
+
+
+[data-edb] {
+  position: relative;
+}
+[data-edb]:not(:empty):not([data-edb="0"]):not([data-edb=""]) {
+  padding-right: .5em !important;
+}
+[data-edb]:not(:empty):not([data-edb="0"]):not([data-edb=""])::after {
+  content: '+'attr(data-edb);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: 75%;
+  line-height: 0.8;
+  color: #b00;
+}
+
+/* // Free-Memo
+---------------------------------------------------------------------------------------------------- */
+#free-note,
+#free-history{
+  margin-top: var(--box-v-gap);
+}
+
+
+/* // History
+---------------------------------------------------------------------------------------------------- */
+#history {
+  margin-top: var(--box-v-gap);
+}
+#history table {
+  > thead {
+    .exp    { width: 4.6em; } /* 経験点 */
+  }
+  > tbody td.exp s {
+    opacity: 0.3;
+    text-decoration: none;
+  }
+}
+/* // セッション履歴：子項目の見出し調整
+---------------------------------------------------------------------------------------------------- */
+/* 消費寵愛点の下にある4つの項目を小さく・細くする */
+#history table thead tr:nth-child(2) th,
+#history table thead th.small {
+  font-size: 0.9rem; /* サイズを一回り小さく */
+  font-weight: normal; /* 太字を解除して子項目感を出す */
+  padding: 0.2rem 0.1rem; /* 上下左右の余白を少し詰める */
+  line-height: 1.1; /* 改行した時の行間を少し詰める */
+}
+
+/* // セッション履歴の列幅とフォントサイズ固定（各項目クラス指定版）
+---------------------------------------------------------------------------------------------------- */
+#history table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* --- 各列の幅を th に対して直接指定 --- */
+#history th.col-no     { width: 2.2em; }
+#history th.col-date   { width: 4.5em; }
+#history th.col-title  { width: auto;  } /* 残りの余白を吸収して広がる */
+#history th.col-exp    { width: 3.5em; }
+#history th.col-consume-head { width: 12em; }
+/* #history th.col-miren  { width: 1.0em; }
+#history th.col-insan  { width: 2.0em; }
+#history th.col-basep  { width: 3.0em; }
+#history th.col-enhp   { width: 4.0em; } */
+#history th.col-gm     { width: 6.0em; }
+#history th.col-member { width: auto;  } /* 残りの余白を吸収して広がる */
+
+/* --- 【本題】小項目の見出しデザイン（★ここでサイズ調整が可能です） --- */
+#history th.small {
+  font-size: 0.75rem !important; /* ←【変更箇所】ここを変えれば確実にサイズが変化します！ */
+  font-weight: normal;
+  padding: 0.2rem 0.1rem;
+  line-height: 1.1;
+}
+
+#history table tbody td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.part-status-error { color: #e33; font-weight: bold; }
+.part-status-line { line-height: 1.6; margin-bottom: 0.5em; }
+
+/* 損傷パーツの動的表示制御 */
+article.damage-view-gray .is-damage { opacity: 0.6; filter: grayscale(0.8); }
+article.damage-view-hide .is-damage { display: none; }
+
+/* // カテゴリカラー設定時の標準背景色の無効化
+---------------------------------------------------------------------------------------------------- */
+/* 「is-colored」クラスが付いた tbody とその中身のセルに対して、ゆとシート標準の背景色を透明化する */
+.skill-area table.line-tbody tbody.is-colored,
+.part-area table.line-tbody tbody.is-colored,
+.skill-area table.line-tbody tbody.is-colored tr,
+.part-area table.line-tbody tbody.is-colored tr,
+.skill-area table.line-tbody tbody.is-colored td,
+.part-area table.line-tbody tbody.is-colored td {
+  background-color: transparent !important;
+}
+
+/* ////////// LayerEnd ////////// */
+}
+

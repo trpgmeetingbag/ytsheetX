@@ -1,0 +1,1510 @@
+@charset "utf-8";
+
+/* // キャラクター
+---------------------------------------------------------------------------------------------------- */
+body:not([data-create-type="C"]) .construction-only {
+  display: none;
+}
+body:not([data-create-type="F"]) .fullscratch-only {
+  display: none;
+}
+
+#regulation dl {
+  grid-template-columns: max-content 1fr;
+}
+#regulation dl dt {
+  grid-column: 1;
+  grid-row: auto;
+  padding-left: .5em;
+  padding-right: .2em;
+  line-height: 1.8;
+  align-self: start;
+  text-align: right;
+}
+#regulation dl dd {
+  grid-column: 2;
+  grid-row: auto;
+  font-size: 1.2rem;
+  align-self: start;
+  text-align: left;
+}
+#regulation dl dd label {
+  margin-left: 2px;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+
+/* 初期クレジットの入力欄幅 */
+#regulation dl dd input[name=initialCredit] {
+  width: 6em; /* 桁数が増えることを考慮し、元の5emから少しだけ広げています */
+}
+#regulation dl dd input[name=debt] {
+  width: 6em; /* 桁数が増えることを考慮し、元の5emから少しだけ広げています */
+}
+
+/* // Area-Status
+---------------------------------------------------------------------------------------------------- */
+#area-status {
+  display: grid;
+  grid-gap: var(--box-v-gap) var(--box-h-gap);
+  
+  grid-template-columns: 1.25fr 0.55fr 1.1fr 2.115fr;
+  grid-template-rows: auto auto auto auto;
+  
+  /* ★ STT-EBS を STT(初期値) と EBS(永続BS) に分割してはめ込みます */
+  grid-template-areas:
+    "PE1 PE2 PE3 IMG"
+    "STT STT EBS IMG"
+    "OAF OAF OAF OAF"
+    "LST LST LST LST"
+    "BDY BDY BDY BDY"
+  ;
+}
+
+/* スマホ・タブレット等の画面が狭い時のレスポンシブ対応 */
+@media screen and (max-width: 735px){
+  #area-status {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "IMG IMG"
+      "PE1 PE1"
+      "PE2 PE3"
+      "STT EBS"
+      "OAF OAF"
+      "LST LST"
+      "BDY BDY"
+    ;
+  }
+}
+
+/* グリッドエリアの割り当て */
+#image-none,
+#image                 { grid-area: IMG; }
+#personal              { grid-area: PE1; }
+#personal2             { grid-area: PE2; }
+#personal3             { grid-area: PE3; }
+#initial-values        { grid-area: STT; }
+#permanent-bs          { grid-area: EBS; }
+#origin-adept-section  { grid-area: OAF; }
+#lifestyle             { grid-area: LST; }
+  #body-arrange          { grid-area: BDY; }
+/* #stt-ebs-container は不要になったため削除しました */
+
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* ⑰⑱ 初期数値 ＆ 永続BS の設定（幅潰れ強制上書き版）
+/* ---------------------------------------------------------------------------------------------------- */
+#initial-values {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important; /* STTエリアの幅に対して均等に2等分 */
+  align-self: start !important;
+  width: 100% !important; /* 古い flex 設定を強制キャンセル */
+}
+
+#initial-values dl dd {
+  white-space: nowrap; /* テキストの折り返しを禁止して1行にする */
+  padding: 0.5rem 0.2rem !important; /* 上下の余白をスッキリさせる */
+}
+#initial-values dl dd input[type="number"] {
+  width: 2.5em !important; /* 100%に広がる仕様を上書きし、数文字分に縮める */
+  min-width: 0 !important;
+  display: inline-block !important; /* 横並びを強制 */
+  margin: 0 2px !important;
+}
+
+#permanent-bs {
+  align-self: start !important;
+  width: 100% !important; 
+  min-width: 100% !important;
+}
+
+/* 【適用ペナルティだけの専用スタイル】 */
+.penalty-wrap {
+  font-size: 75%;    /* 60%だと入力欄まで小さくなりすぎるため少し拡大 */
+  opacity: 0.8;      /* 薄すぎないように調整 */
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* ライフスタイルのテーブル幅調整
+/* ---------------------------------------------------------------------------------------------------- */
+#lifestyle table.edit-table {
+  width: 100%;
+  table-layout: fixed; /* 幅の計算を厳密にする */
+}
+
+
+
+#lifestyle table.edit-table th:not(.handle):nth-of-type(1),
+#lifestyle table.edit-table td:not(.handle):nth-of-type(1) {
+  width: 4em;
+  font-weight: bold;
+}
+
+/* 2列目の入力欄（ハンドル以外の2番目のセル）は残りを吸収する */
+#lifestyle table.edit-table th:not(.handle):nth-of-type(2),
+#lifestyle table.edit-table td:not(.handle):nth-of-type(2) {
+  width: 12em;
+}
+
+#lifestyle table.edit-table th:not(.handle):nth-of-type(3),
+#lifestyle table.edit-table td:not(.handle):nth-of-type(3) {
+  width: auto;
+}
+
+/* 内部のテキストボックスをセル幅いっぱいに広げる */
+#lifestyle table.edit-table td:not(.handle) input[type="text"] {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* パワー欄のレイアウト
+/* ---------------------------------------------------------------------------------------------------- */
+#power {
+  margin-top: var(--box-v-gap);
+}
+#power table {
+  table-layout: auto;
+  > thead th { 
+    /* 5列構成の指定 */
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  18em; } /* 名称 */
+    &:nth-child(3) { width:   7em; } /* タイプ */
+    &:nth-child(4) { width:  auto; } /* 空白（残りを吸収） */
+    &:nth-child(5) { width: 5.4em; } /* 参照 */
+  }
+}
+#power table tbody td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#power table tbody td[rowspan] {
+  vertical-align: middle;
+}
+#power table tbody td[colspan] {
+  padding: 0 0 5px;
+  vertical-align: middle;
+  text-align: right;
+  & div {
+    display: grid;
+    grid-gap: .5rem;
+    /* 1:「取得元」, 2:取得元入力欄(10em), 3:「効果」, 4:効果入力欄(残り全幅) */
+    grid-template-columns: max-content 10em max-content 1fr;
+    align-items: center;
+  }
+  & b {
+    display: inline-block;
+    font-size: 85%;
+    text-align: right;
+  }
+  & .small {
+    font-size: 80%;
+    transform: scale(0.8,1);
+    white-space: nowrap;
+  }
+  & b::after {
+    content: ":";
+    font-size: 1rem;
+  }
+}
+@media screen and (width > 735px){
+  #power table tbody td:nth-child(n+3) input {
+    font-size: 12.5px;
+  }
+}
+@media screen and (width <= 735px){
+  #power summary + div { overflow-x: auto; }
+  #power table {
+    table-layout: fixed;
+  }
+  #power table thead tr,
+  #power table tbody tr {
+    display: table-row;
+  }
+  #power table tbody td[rowspan],
+  #power table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #power table tbody td[colspan] div {
+    grid-template-columns: max-content 8em max-content 1fr;
+  }
+  #power table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  14em; } /* 名称 */
+    &:nth-child(3) { width:   6em; } /* タイプ */
+    &:nth-child(4) { width:   0em; } /* 空白 */
+    &:nth-child(5) { width:   5em; } /* 参照 */
+  }
+  #power table tbody td {
+    border-left: hidden;
+    padding: .5em 0 0;
+    &[colspan] {
+      padding: 0 0 .5em;
+    }
+  }
+  #power table tbody td b {
+    white-space: nowrap;
+  }
+}
+
+#wear {
+  margin-top: var(--box-v-gap);
+}
+#wear table {
+  table-layout: auto;
+  > thead th { 
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  18em; } /* 名称 */
+    &:nth-child(3) { width:   auto; } /* LV */
+    &:nth-child(4) { width: 5.3em; } /* 射程 */
+    &:nth-child(5) { width: 3.9em; } /* 侵蝕値 */
+    &:nth-child(6){ width: 5.4em; } /* 制限 */
+  }
+}
+#wear table tbody td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#wear table tbody td[rowspan] {
+  vertical-align: middle;
+}
+#wear table tbody td[colspan] {
+  padding: 0 0 5px;
+  vertical-align: middle;
+  text-align: right;
+  & div {
+    display: grid;
+    grid-gap: .1rem;
+    grid-template-columns: 4em 6.5em 3.8em 1fr;
+    align-items: end;
+  }
+  & b {
+    display: block;
+    font-size: 85%;
+    text-align: right;
+  }
+  & .small {
+    font-size: 80%;
+    transform: scale(0.8,1);
+    white-space: nowrap;
+  }
+  & b::after {
+    content: ":";
+    font-size: 1rem;
+  }
+}
+@media screen and (width > 735px){
+  #wear table tbody td:nth-child(n+4) input {
+    font-size: 12.5px;
+  }
+}
+@media screen and (width <= 735px){
+  #wear summary + div { overflow-x: auto; }
+  #wear table {
+    table-layout: fixed;
+  }
+  #wear table thead tr,
+  #wear table tbody tr {
+    display: table-row;
+  }
+  #wear table tbody td[rowspan],
+  #wear table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #wear table tbody td[colspan] div {
+    grid-template-columns: max-content 6.5em max-content 10em max-content 1fr;
+  }
+  #wear table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  14em; } /* 名称 */
+    &:nth-child(3) { width: 0em; } /* LV */
+    &:nth-child(4) { width:   5em; } /* 射程 */
+    &:nth-child(5) { width:   4em; } /* 侵蝕値 */
+    &:nth-child(6){ width:   5em; } /* 制限 */
+  }
+  #wear table tbody td {
+    border-left: hidden;
+    padding: .5em 0 0;
+    &[colspan] {
+      padding: 0 0 .5em;
+    }
+  }
+  #wear table tbody td b {
+    white-space: nowrap;
+  }
+  #wear table tbody td:nth-child(3) input { min-width: 2em; } /* LV */
+}
+
+
+#item {
+  margin-top: var(--box-v-gap);
+}
+#item table {
+  table-layout: auto;
+  > thead th { 
+    /* 現在の6列構成に合わせて nth-child を 1〜6 に修正 */
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  18em; } /* 名称 */
+    &:nth-child(3) { width:   auto; } /* 空白1 */
+    &:nth-child(4) { width: 5.3em; } /* 価格 */
+    &:nth-child(5) { width: 3.9em; } /* 空白2 */
+    &:nth-child(6) { width: 5.4em; } /* 参照 */
+  }
+}
+#item table tbody td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#item table tbody td[rowspan] {
+  vertical-align: middle;
+}
+#item table tbody td[colspan] {
+  padding: 0 0 5px;
+  vertical-align: middle;
+  text-align: right;
+  & div {
+    display: grid;
+    grid-gap: .5rem;
+    /* 1:使用済ラベル, 2:「効果:」, 3:入力欄 の3要素に合わせて無駄なく配置 */
+    grid-template-columns: max-content max-content 1fr;
+    align-items: center; /* endからcenterに変更し、チェックボックスの中央揃えを美しく */
+  }
+  /* チェックボックスとテキストを横並びにするための専用指定 */
+  & label {
+    display: flex;
+    align-items: center;
+    gap: 0.2em; /* チェックボックスと文字の隙間 */
+  }
+  & b {
+    display: inline-block; /* blockから変更し、強制改行をストップ */
+    font-size: 85%;
+    text-align: right;
+  }
+  & .small {
+    font-size: 80%;
+    transform: scale(0.8,1);
+    white-space: nowrap;
+  }
+  & b::after {
+    content: ":";
+    font-size: 1rem;
+  }
+}
+@media screen and (width > 735px){
+  #item table tbody td:nth-child(n+4) input {
+    font-size: 12.5px;
+  }
+}
+@media screen and (width <= 735px){
+  #item summary + div { overflow-x: auto; }
+  #item table {
+    table-layout: fixed;
+  }
+  #item table thead tr,
+  #item table tbody tr {
+    display: table-row;
+  }
+  #item table tbody td[rowspan],
+  #item table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #item table tbody td[colspan] div {
+    /* スマホ版も3要素構成に合わせて修正 */
+    grid-template-columns: max-content max-content 1fr;
+  }
+  #item table thead th {
+    /* スマホ版も1〜6列の構成に修正 */
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  14em; } /* 名称 */
+    &:nth-child(3) { width:  0em; } /* 空白1 */
+    &:nth-child(4) { width:  5em; } /* 価格 */
+    &:nth-child(5) { width:  4em; } /* 空白2 */
+    &:nth-child(6) { width:  5em; } /* 参照 */
+  }
+  #item table tbody td {
+    border-left: hidden;
+    padding: .5em 0 0;
+    &[colspan] {
+      padding: 0 0 .5em;
+    }
+  }
+  #item table tbody td b {
+    white-space: nowrap;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* 武器・カスタマイズ欄のレイアウト
+/* ---------------------------------------------------------------------------------------------------- */
+#weapon {
+  margin-top: var(--box-v-gap);
+}
+
+/* ▼ 1. 武器本体の幅指定（7列構成） ▼ */
+#weapon > div > table {
+  table-layout: auto;
+}
+/* 他のテーブル（カスタマイズ）に干渉しないよう、直下の thead だけを狙い撃ち */
+#weapon > div > table > thead > tr > th:nth-child(1) { width: 1.4em; } /* ハンドル */
+#weapon > div > table > thead > tr > th:nth-child(2) { width: 18em; }  /* 名称 */
+#weapon > div > table > thead > tr > th:nth-child(3) { width: 10em; }   /* 射程 */
+#weapon > div > table > thead > tr > th:nth-child(4) { width: 7em; }  /* ダメージ */
+#weapon > div > table > thead > tr > th:nth-child(5) { width: auto; }  /* 補記 */
+#weapon > div > table > thead > tr > th:nth-child(6) { width: 4em; }   /* 維持費 */
+#weapon > div > table > thead > tr > th:nth-child(7) { width: 5em; } /* 参照 */
+
+#weapon table > tbody > tr > td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#weapon table > tbody > tr > td[rowspan] {
+  vertical-align: middle;
+}
+#weapon table b {
+  display: inline-block;
+  font-size: 85%;
+  text-align: right;
+}
+#weapon table b::after {
+  content: ":";
+  font-size: 1rem;
+}
+
+/* ▼ ネスト構造とツリー罫線のデザイン ▼ */
+tr.custom-row-container > td.custom-cell {
+  padding: 5px 0 10px 1.5em; 
+  position: relative;
+}
+tr.custom-row-container > td.custom-cell::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 0;
+  left: 0.5em;
+  border-left: 2px dashed var(--box-border); 
+}
+
+/* ▼ 2. カスタマイズの幅指定 ▼ */
+table.custom-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+}
+table.custom-table td {
+  padding: 5px 0 0 !important;
+}
+/* 列構成: 親の列幅と縦のラインが揃うように計算 */
+table.custom-table tr:first-child td:nth-child(1) { width: 1.4em; } /* ハンドル */
+table.custom-table tr:first-child td:nth-child(2) { width: 16.6em;} /* 名称（親の13em - インデント分1.4em） */
+table.custom-table tr:first-child td:nth-child(3) { width: auto;  } /* 空欄（親の射程～補記の幅を吸収） */
+table.custom-table tr:first-child td:nth-child(4) { width:   5em; } /* 価格（親の維持費の左側に配置） */
+table.custom-table tr:first-child td:nth-child(5) { width:   4em; } /* 維持費（親の維持費と揃える） */
+table.custom-table tr:first-child td:nth-child(6) { width:   5em; } /* 参照（親の参照と揃える） */
+
+/* カテゴリと効果の1行圧縮（絶対に縦積みさせない強制指定） */
+table.custom-table td[colspan="5"] > div {
+  display: grid !important;
+  grid-gap: .5rem;
+  grid-template-columns: max-content 10em max-content 1fr;
+  align-items: center;
+  text-align: left;
+}
+
+/* ▼ 3. カスタマイズ増減ボタンの中央寄せ ▼ */
+#weapon table td.custom-cell > .add-del-button {
+  display: flex;
+  justify-content: center; 
+  width: 100%;
+  margin-top: 5px;
+}
+
+
+/* ======================================================================== */
+/* 共通規格化によるレイアウト補正（空白列の復元と下段の横並び） */
+/* ======================================================================== */
+
+
+
+/* ▼ 2. 各項目の不要な下段要素の非表示（通常時は隠す） ▼ */
+#power .used-label { display: none !important; }
+#wear .used-label { display: none !important; }
+#item .cat-wrapper { display: none !important; }
+/* カスタマイズはカテゴリも不要なので消去 */
+table.custom-table .used-label,
+table.custom-table .cat-wrapper { display: none !important; }
+#shared-trash-table .used-label { display: none !important; }
+
+
+/* ▼ 3. 下段の横並び制御（可視要素の数に合わせてグリッドを調整） ▼ */
+/* カテゴリと使用済が改行されて縦積みにならないように強制 */
+.used-label, .cat-wrapper {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.2em;
+  white-space: nowrap;
+}
+.cat-wrapper input {
+  width: 10em !important; /* 取得元・カテゴリの幅を固定 */
+}
+
+/* パワー・ウェア・アイテム（可視要素が3つのグループ） */
+/* [要素1] [要素2] [効果入力欄(残り全幅)] の美しい横並びになります */
+#power table tbody td[colspan] > div,
+#wear table tbody td[colspan] > div,
+#item table tbody td[colspan] > div {
+  display: grid !important;
+  grid-gap: .5rem;
+  grid-template-columns: max-content max-content 1fr;
+  align-items: center;
+}
+
+/* カスタマイズ（可視要素が2つのグループ） */
+/* [効果文字] [効果入力欄(残り全幅)] のみになります */
+table.custom-table td[colspan="5"] > div {
+  display: grid !important;
+  grid-gap: .5rem;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+}
+
+/* 共通ゴミ箱の下段（何が入っても破綻しないようにFlexboxで吸収） */
+#shared-trash-table td[colspan] > div {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+#shared-trash-table td[colspan] > div > input {
+  flex-grow: 1; /* 入力欄を可能な限り伸ばす */
+}
+
+
+/* ▼ 1. 空白列の復元（入力欄だけを透明にして、ゼブラ背景を維持する） ▼ */
+/* パワー: maintを完全に消し、priceの "入力欄" を透明化して空白列にする */
+#power .maint-col { display: none !important; }
+#power .price-col input { visibility: hidden !important; pointer-events: none; }
+
+/* ウェア: typeの "入力欄" を透明化して空白列にする */
+#wear .type-col input { visibility: hidden !important; pointer-events: none; }
+
+/* アイテム: typeとmaintの "入力欄" を透明化して空白列にする */
+#item .type-col input, #item .maint-col input { visibility: hidden !important; pointer-events: none; }
+
+/* カスタマイズ: typeの "入力欄" を透明化して空白列にする */
+table.custom-table .type-col input { visibility: hidden !important; pointer-events: none; }
+
+/* ゴミ箱内: 共通してtypeの "入力欄" を透明化 */
+#shared-trash-table .type-col input { visibility: hidden !important; pointer-events: none; }
+
+
+/*==========================================================*/
+/* ※途中の 「▼ 2. 各項目の不要な下段要素の非表示」 などはそのまま残してください */
+/*==========================================================*/
+
+
+/* ▼ 2. カスタマイズの幅指定（theadを基準に計算） ▼ */
+table.custom-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+}
+table.custom-table td {
+  padding: 5px 0 0 !important;
+}
+/* 列構成: 先ほど追加した thead の th に対して幅を指定するように変更 */
+table.custom-table > thead > tr > th:nth-child(1) { width: 1.4em; } /* ハンドル */
+table.custom-table > thead > tr > th:nth-child(2) { width: 11.6em;} /* 名称（親の13em - インデント分1.4em） */
+table.custom-table > thead > tr > th:nth-child(3) { width: auto;  } /* 空欄（親の射程～補記の幅を吸収） */
+table.custom-table > thead > tr > th:nth-child(4) { width:   4em; } /* 価格（親の維持費の左側に配置） */
+table.custom-table > thead > tr > th:nth-child(5) { width:   4em; } /* 維持費（親の維持費と揃える） */
+table.custom-table > thead > tr > th:nth-child(6) { width: 4.5em; } /* 参照（親の参照と揃える） */
+
+/* カテゴリと効果の1行圧縮（可視要素が2つなのでグリッドを合わせる） */
+table.custom-table td[colspan="5"] > div {
+  display: grid !important;
+  grid-gap: .5rem;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  text-align: left;
+}
+
+/* ======================================================================== */
+/* 共通ゴミ箱：出自（元の場所）をわかりやすくする自動バッジ表示 */
+/* ======================================================================== */
+
+/* ゴミ箱では下段が隠れるため、上段の「名称セル（2番目のtd）」をFlexboxにしてバッジを置く */
+#shared-trash-table tbody[data-origin] tr:first-child td:nth-child(2) {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5em;
+}
+
+/* 名称入力欄が縮まないように残りの幅をすべて吸収させる */
+#shared-trash-table tbody[data-origin] tr:first-child td:nth-child(2) input {
+  flex-grow: 1;
+}
+
+/* 名称セルの先頭にバッジを生成 */
+#shared-trash-table tbody[data-origin] tr:first-child td:nth-child(2)::before {
+  display: inline-block;
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* パワーはピンク系 */
+#shared-trash-table tbody[data-origin="power"] tr:first-child td:nth-child(2)::before {
+  content: "パワー";
+  background-color: #e91e63;
+}
+
+/* ウェアはブルー系 */
+#shared-trash-table tbody[data-origin="wear"] tr:first-child td:nth-child(2)::before {
+  content: "ウェア";
+  background-color: #2196f3;
+}
+
+/* アイテムはグリーン系 */
+#shared-trash-table tbody[data-origin="item"] tr:first-child td:nth-child(2)::before {
+  content: "アイテム";
+  background-color: #4caf50;
+}
+
+/* 武器カスタマイズはオレンジ系（文字数を少し詰めてスッキリと） */
+#shared-trash-table tbody[data-origin="weaponCustom"] tr:first-child td:nth-child(2)::before {
+  content: "カスタム";
+  background-color: #ff9800;
+}
+
+#origin-adept-section hr {
+  border-top: 3px double var(--box-outside-border-color);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  
+  /* 上下の無駄な余白を減らし、スッキリと線を引く */
+  margin: 0px 0 0 0 !important;
+  padding-top: 5px;
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+/* 借金欄のレイアウト
+/* ---------------------------------------------------------------------------------------------------- */
+.debt-container {
+  display: flex;
+  align-items: flex-start; /* 注意書きが複数行になった時も上端で揃える */
+  gap: 1.5rem;         
+  margin-top: var(--box-v-gap);
+  width: 100%;
+}
+
+/* box構造に合わせて幅を調整 */
+#debt-box {
+  flex: 0 0 12em;      /* 横並びにするため少し広めに確保 */
+  margin: 0;           
+}
+
+/* 合計表示のスタイル */
+.debt-total {
+  text-align: center;
+  font-size: 1.1em;
+  border-bottom: 1px dashed var(--box-border);
+}
+.debt-total b {
+  font-size: 1.4em;
+  margin-left: 0.5em;
+}
+
+/* ▼ 横並びの行レイアウト ▼ */
+.debt-row {
+  display: flex;
+  justify-content: space-between; /* テキストは左、入力欄は右に寄せる */
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+.debt-row span:first-child {
+  white-space: nowrap; /* テキストが折り返さないようにする */
+}
+.debt-row input {
+  width: 4em;          /* 入力欄の幅を固定 */
+  text-align: right;
+}
+.pseudo-input {
+  width: 4em;          /* 入力欄と幅を合わせる */
+  text-align: right;
+  font-weight: bold;
+  padding-right: 5px;  /* input内のテキスト位置と視覚的に揃える */
+}
+
+/* 右側の注意書きエリア */
+.debt-notice {
+  flex: 1;             
+  font-size: 0.85em;
+  color: var(--box-border);
+  line-height: 1.4;
+  padding-top: 5px;    /* タイトル行と少し高さを合わせる */
+}
+
+/* ======================================================================== */
+/* 履歴テーブル（収入・支出・借金管理版）の列幅指定 */
+/* ======================================================================== */
+
+#history-table, .example.edit-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+/* colgroup に対する幅指定 */
+#history-table col:nth-child(1), .example.edit-table col:nth-child(1) { width: 1.4em; }  /* ハンドル */
+#history-table col.date,         .example.edit-table col.date         { width: 6.5em; }  /* 日付（YYYY-MM-DDが入る幅） */
+#history-table col.title,        .example.edit-table col.title        { width: 18em; }   /* タイトル */
+
+/* 数値入力欄はコンパクトに */
+#history-table col.income,       .example.edit-table col.income       { width: 8em; }  /* 収入 */
+#history-table col.expense,      .example.edit-table col.expense      { width: 8em; }  /* 支出 */
+#history-table col.debt,         .example.edit-table col.debt         { width: 8em; }  /* 借金増減 */
+
+#history-table col.gm,           .example.edit-table col.gm           { width: 8em; }    /* GM名 */
+#history-table col.member,       .example.edit-table col.member       { width: auto; }   /* 参加者（残りの幅をすべて吸収） */
+
+
+/* ▼ 備考欄（下段）のレイアウト補正 ▼ */
+#history-table tbody tr:nth-child(2) td,
+.example.edit-table tbody tr:nth-child(2) td {
+  padding-top: 2px; /* 上段との隙間を少し詰める */
+}
+
+/* ボディアレンジの入力欄を広げる */
+textarea[name="bodyArrange"] {
+  height: 4em;
+  resize: vertical; /* ユーザーが縦方向に自由にドラッグで広げられるようにする */
+}
+
+
+
+
+
+
+
+
+
+
+
+body:not(.mode-crc) .crc-only {
+  display: none;
+}
+
+body:not(.mode-crc) .crc-only {
+  display: none;
+}
+
+#syndrome-status table {
+  width: 100%;
+  & tr {
+    border-width: 1px 0 0;
+    border-style: solid;
+  }
+  > thead {
+    & th:nth-child(1)   { width: 3.5em; }
+    & th:nth-last-child(-n+4) { width:   5em; }
+  }
+  > tbody {
+    & th.breed {
+      position: relative;
+      border-right-width: 1px;
+      border-right-style: solid;
+      line-height: 1;
+    
+      > #breed-value:empty + span {
+        display: none;
+      }
+    }
+    & tr.works-row .radio-button > input:not(:checked) + span {
+      opacity: 0.3;
+    }
+    & td.error {
+      color: #c00;
+      outline: 1px dotted #f00;
+      outline-offset: -1px;
+      background-color: rgba(255,0,0,0.1);
+    }
+  }
+  > tbody.syndrome-rows tr.auto input,
+  > tbody.syndrome-rows tr:not(.auto) td span {
+    display: none;
+  }
+  & tr.pure + tr td:nth-child(n+2) {
+    &::after { content: "×2"; }
+    & input { display: none; }
+  }
+}
+.night #syndrome-status tbody td.error {
+  color: #ea0;
+  outline: 1px dotted #f70;
+  background-color: rgba(255,0,0,0.1);
+}
+@media screen and (width <= 735px){
+  #syndrome-status table {
+    > thead th.breed {
+      width: 1.2em;
+      > span { display:none }
+    }
+    > thead th:nth-last-child(-n+4) { width: 3.5em; }
+  }
+  #breed-value + span { display:none; }
+}
+
+#sub-status input {
+  width: 3.5em;
+}
+#sub-status input.auto {
+  width: 2.5em;
+}
+#lifepath {
+  margin-top: var(--box-v-gap);
+}
+#lifepath table {
+  table-layout: auto;
+  & th:nth-child(1) { width: 5em; }
+  & td:nth-child(2) { width: 6em; }
+  & th:nth-child(3) { width: 4em; }
+  & td.center { width: 4em; }
+  & td:last-child   { width: auto; }
+}
+#lifepath table tbody tr:before {
+  display: none;
+}
+#lifepath table th.small {
+  border-bottom-style: solid;
+}
+#lifepath table th.small.right {
+  font-size: 85%;
+}
+#lifepath table input[type=checkbox] {
+  transform: scale(1.4) translateY(.1em);
+  margin-right: .2em;
+}
+@media screen and (width <= 735px){
+  #lifepath table,
+  #lifepath tbody,
+  #lifepath th,
+  #lifepath td {
+    display: block;
+    width: auto !important;
+  }
+  #lifepath tbody {
+    padding: .5em 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+  }
+  #lifepath tr {
+    display: grid;
+  }
+  #lifepath tr,
+  #lifepath th,
+  #lifepath td {
+    border-style: none !important;
+  }
+  #lifepath th {
+    padding-top: .3em;
+  }
+  #lifepath tbody:nth-child(n+1):nth-child(-n+3) tr {
+    grid-template-columns: 6em 8em 1fr;
+  }
+  #lifepath tbody:nth-child(n+1):nth-child(-n+3) tr .left {
+    grid-column: span 3;
+  }
+  #lifepath tbody:nth-child(n+4):nth-child(-n+5) tr {
+    grid-template-columns: 6em 1fr 6em 1fr;
+  }
+  #lifepath tbody:nth-child(n+4):nth-child(-n+5) tr .left {
+    grid-column: span 4;
+  }
+  #lifepath tbody:nth-child(n+6):nth-child(-n+7) tr {
+    grid-template-columns: 6em 1fr 6em 1fr;
+  }
+  #lifepath tbody:nth-child(n+6):nth-child(-n+7) tr .left {
+    grid-column: span 4;
+  }
+  #lifepath tbody:nth-child(5) tr:nth-child(2) th:nth-child(2) {
+    display: none;
+  }
+}
+
+#status > summary #exp-skill.minus {
+  color: #e70;
+}
+#status dl#status-table > *:nth-of-type(even),
+#status dl#skill-table > *:nth-of-type(even) {
+  background-color: var(--box-even-rows-bg-color);
+}
+
+#status dl#skill-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  > dt {
+    display: none;
+  }
+  > dd:not(:last-child) {
+    border-right-width: 1px;
+    border-right-style: solid;
+  }
+  > dd > dl {
+    display: grid;
+    grid-template-columns: 1fr max-content;
+  }
+  > dd > dl > * {
+    border-top-width: 1px;
+    border-top-style: solid;
+  }
+  > dd > dl > dt.left {
+    display: grid;
+    place-items: center start;
+    padding-left: .5em;
+    font-weight: normal;
+  }
+  > dd > dl > dt input {
+    font-weight: normal;
+  }
+  > dd > dl > dd input {
+    min-width: 0;
+    width: 3.4em;
+  }
+  > dd > dl > dd input:last-of-type {
+    width: 3em;
+    margin: 0 -.13em;
+    transform: scale(0.9);
+  }
+}
+@media screen and (width <= 735px){
+  #status dl#status-table > *:nth-of-type(even) {
+    background: none;
+  }
+  #status dl#skill-table {
+    display: block;
+    > dt {
+      display: block;
+      border-top-width: 1px;
+      border-top-style: solid;
+    }
+    > dd dt {
+      font-size: inherit;
+    }
+  }
+}
+
+#lois table {
+  > colgroup {
+    .relation{ width: 6.2em; } /* 関係 */
+    .name    { width:  12em; } /* 名前 */
+    .emo     { width:   6em; } /* 感情 */
+    .slash   { width: 1.2em; }
+    .color   { width:   3em; } /* 属性 */
+    .note    { width:  auto; } /* 備考 */
+    .sperior { width: 1.4em; } /* 状態 */
+    .state   { width:   3em; } /* 状態 */
+  }
+  > thead th.right.small {
+    padding-right: 0;
+  }
+}
+#lois table tbody tr:nth-child(4){
+  border-top-width: 2px;
+}
+#lois table tbody td.relation {
+  white-space: nowrap;
+  .handle {
+    display: inline-block;
+    width: 1.4em;
+    text-align: center;
+  }
+  .handle + input {
+    width: calc(100% - 1.4em - .2rem);
+  }
+}
+#lois table tbody td.emo {
+  padding-left: .25em;
+  white-space: nowrap;
+  &::before { display: none; }
+  > input[type=checkbox] {
+    margin: 0;
+    transform: scale(1.5) translateY(.1em);
+  }
+  > input[type=checkbox] + input {
+    width: calc(100% - 1.4em);
+    margin-left: .3em;
+  }
+}
+#lois table tbody td span[data-state] {
+  cursor: pointer;
+  user-select: none;
+}
+#lois .lois-reset-buttons {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+}
+#lois .lois-reset-buttons button {
+  padding-bottom: 4px;
+}
+#memory table {
+  table-layout: auto;
+}
+#memory table tbody td {
+  &:nth-child(1) { width: 1.5em; border-right-width: 1px; } /* ✔ */
+  &:nth-child(2) { width: 6.2em; border-right-width: 1px; } /* 関係 */
+  &:nth-child(3) { width: 14em; border-right-width: 1px; } /* 名前 */
+  &:nth-child(4) { width: 4em; border-right-width: 1px; } /* 感情 */
+}
+#memory table thead tr th:first-child {
+  padding-left: 0;
+  text-align: center;
+}
+#memory table tbody tr td:first-child {
+  padding-right: .2rem;
+  white-space: nowrap;
+}
+#memory table input[type=checkbox] {
+  transform: scale(1.5) translateY(.1em);
+}
+#memory table tbody tr td span.handle {
+  display: inline-block;
+  width: 1.4em;
+  margin: -.1rem 0;
+  text-align: center;
+}
+@media screen and (width <= 735px){
+  #lois summary + div { overflow-x: auto; }
+  #lois table {
+    table-layout: fixed;
+    margin-top: .5em;
+    white-space: nowrap;
+    > colgroup {
+      .relation{ width:   7em; } /* 関係 */
+      .name    { width:  10em; } /* 名前 */
+      .emo     { width:   6em; } /* 感情 */
+      .slash   { width: 1.2em; }
+      .color   { width: 3.2em; } /* 属性 */
+      .note    { width:  14em; } /* 備考 */
+      .sperior { width: 1.4em; } /* 状態 */
+      .state   { width:   3em; } /* 状態 */
+    }
+    > tbody td span[data-state] { padding: .5em 0; }
+  }
+
+  #memory summary + div { overflow-x: auto; }
+  #memory table  {
+    table-layout: fixed;
+    margin-top: .5em;
+    white-space: nowrap;
+    > thead th {
+      &:nth-child(1) { width: 1.5em; }
+      &:nth-child(2) { width:   7em; }
+      &:nth-child(3) { width:  12em; }
+      &:nth-child(4) { width:   6em; }
+      &:nth-child(5) { width:  14em; }
+    }
+  }
+}
+
+#effect {
+  margin-top: var(--box-v-gap);
+}
+#effect table {
+  table-layout: auto;
+  > thead th { 
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  auto; } /* 名称 */
+    &:nth-child(3) { width:   2em; } /* LV */
+    &:nth-child(4) { width: 8.9em; } /* タイミング */
+    &:nth-child(5) { width: 8.9em; } /* 技能 */
+    &:nth-child(6) { width: 5.9em; } /* 難易度 */
+    &:nth-child(7) { width: 6.3em; } /* 対象 */
+    &:nth-child(8) { width: 5.3em; } /* 射程 */
+    &:nth-child(9) { width: 3.9em; } /* 侵蝕値 */
+    &:nth-child(10){ width: 5.4em; } /* 制限 */
+  }
+}
+#effect table tbody td {
+  padding: 5px 0 0;
+  vertical-align: bottom;
+}
+#effect table tbody td[rowspan] {
+  vertical-align: middle;
+}
+#effect table tbody td[colspan] {
+  padding: 0 0 5px;
+  vertical-align: middle;
+  text-align: right;
+  & div {
+    display: grid;
+    grid-gap: .1rem;
+    grid-template-columns: 2.3em 6.5em 3.8em 3em 2.3em 1fr;
+    align-items: end;
+  }
+  & b {
+    display: block;
+    font-size: 85%;
+    text-align: right;
+  }
+  & .small {
+    font-size: 80%;
+    transform: scale(0.8,1);
+    white-space: nowrap;
+  }
+  & b::after {
+    content: ":";
+    font-size: 1rem;
+  }
+}
+@media screen and (width > 735px){
+  #effect table tbody td:nth-child(n+4) input {
+    font-size: 12.5px;
+  }
+}
+@media screen and (width <= 735px){
+  #effect summary + div { overflow-x: auto; }
+  #effect table {
+    table-layout: fixed;
+  }
+  #effect table thead tr,
+  #effect table tbody tr {
+    display: table-row;
+  }
+  #effect table tbody td[rowspan],
+  #effect table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #effect table tbody td[colspan] div {
+    grid-template-columns: max-content 6.5em max-content 3em max-content 1fr;
+  }
+  #effect table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  14em; } /* 名称 */
+    &:nth-child(3) { width: 3.5em; } /* LV */
+    &:nth-child(4) { width:   8em; } /* タイミング */
+    &:nth-child(5) { width:   8em; } /* 技能 */
+    &:nth-child(6) { width:   5em; } /* 難易度 */
+    &:nth-child(7) { width:   6em; } /* 対象 */
+    &:nth-child(8) { width:   5em; } /* 射程 */
+    &:nth-child(9) { width:   4em; } /* 侵蝕値 */
+    &:nth-child(10){ width:   5em; } /* 制限 */
+  }
+  #effect table tbody td {
+    border-left: hidden;
+    padding: .5em 0 0;
+    &[colspan] {
+      padding: 0 0 .5em;
+    }
+  }
+  #effect table tbody td b {
+    white-space: nowrap;
+  }
+  #effect table tbody td:nth-child(3) input { min-width: 2em; } /* LV */
+}
+
+#magic {
+  margin-top: var(--box-v-gap);
+}
+#magic table thead th {
+  &:nth-child(1) { width: 1.4em; }
+  &:nth-child(2) { width:  15em; } /* 名称 */
+  &:nth-child(3) { width:   7em; } /* 種別 */
+  &:nth-child(4) { width: 3.8em; } /* 経験点 */
+  &:nth-child(5) { width: 5.5em; } /* 発動値 */
+  &:nth-child(6) { width: 3.9em; } /* 侵蝕値 */
+}
+#magic table thead th,
+#magic table tfoot th {
+  font-size: 90%;
+}
+#magic table tbody td {
+  padding: .5rem 0;
+}
+@media screen and (width <= 735px){
+  #magic summary + div { overflow-x: auto; }
+  #magic table {
+    table-layout: fixed;
+  }
+  #magic table thead tr,
+  #magic table tbody tr {
+    display: table-row;
+  }
+  #magic table tbody td[rowspan] {
+    display: table-cell;
+  }
+  #magic table thead th:nth-child(2) {
+    display: table-cell;
+  }
+  #magic table tbody td[colspan] div {
+    grid-template-columns: max-content 6.5em max-content 3em max-content 1fr;
+  }
+  #magic table thead th {
+    &:nth-child(1) { width: 1.4em; }
+    &:nth-child(2) { width:  15em; } /* 名称 */
+    &:nth-child(3) { width:   7em; } /* 種別 */
+    &:nth-child(4) { width: 3.8em; } /* 経験点 */
+    &:nth-child(5) { width: 5.5em; } /* 発動値 */
+    &:nth-child(6) { width: 3.9em; } /* 侵蝕値 */
+    &:nth-child(7) { width: 3.9em; } /* 侵蝕値 */
+    &:last-child   { width:  16em; } /* 効果 */
+  }
+}
+
+#combo {
+  margin-top: var(--box-v-gap);
+}
+#combo .combo-table {
+  display: grid;
+  grid-template-columns: 1.5em 1.5fr 0.8fr 2.2fr;
+  grid-template-areas:
+    "HNDL NAME COMB COMB"
+    "HNDL   IN   IN  OUT"
+    "HNDL NOTE NOTE  OUT"
+    "HNDL NOTE NOTE OTHR"
+  ;
+}
+#combo .combo-table .handle {
+  grid-area: HNDL;
+  display: grid;
+  place-items: center;
+}
+#combo .combo-table .combo-other {
+  grid-area: OTHR;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1px 2px .4rem;
+  
+  > .button {
+    font-size: 88%;
+    padding: 3px 4px 1px;
+    font-family: var(--font-proportional);
+  }
+}
+#combo .combo-table .combo-combo,
+#combo .combo-table .combo-in,
+#combo .combo-table .combo-out,
+#combo .combo-table .combo-note,
+#combo .combo-table dl dt,
+#combo .combo-table dl dd {
+  padding: 0;
+  border-width: 0 !important;
+}
+#combo .combo-table .combo-in,
+#combo .combo-table .combo-out {
+  margin-top: .5rem;
+}
+#combo .combo-table textarea,
+#combo .combo-table dl dd input,
+#combo .combo-table dl dd select {
+  width: calc(100% - 1px);
+  margin: 0 1px 1px 0;
+}
+#combo .combo-table .combo-in {
+  flex-wrap: wrap;
+}
+#combo .combo-table .combo-in dl {
+  flex-grow: 1 !important;
+  &:nth-child(1) { flex-basis: 30%; }
+  &:nth-child(2) { flex-basis: 35%; }
+  &:nth-child(3) { flex-basis: 35%; }
+  &:nth-child(4) { flex-basis: 26%; }
+  &:nth-child(5) { flex-basis: 30%; }
+  &:nth-child(6) { flex-basis: 26%; }
+  &:nth-child(7) { flex-basis: 16%; }
+}
+
+#combo .combo-table .combo-out {
+  padding-left: .5rem;
+  display: grid;
+  grid-template-columns: 1.2fr max-content 1fr 0.8fr max-content 1fr 1fr;
+  grid-template-rows: max-content auto;
+  & .combo-cond     { grid-column: 1; }
+  & [id*="Stt"]     { grid-column: 2; }
+  & .combo-dice     { grid-column: 3; }
+  & .combo-crit     { grid-column: 4; }
+  & [id*="SkillLv"] { grid-column: 5; }
+  & .combo-fixed    { grid-column: 6; }
+  & .combo-atk      { grid-column: 7; }
+  
+  & dt.combo-dice   { grid-column: 2 / span 2; }
+  & dt.combo-fixed  { grid-column: 5 / span 2; }
+
+  > dt {
+    align-self: center;
+  }
+  > dt.combo-fixed {
+    line-height: 1;
+  }
+  > dt.combo-cond .combo-condition-utility {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border: 1px dashed transparent;
+    font-size: 75%;
+    margin-left: 0.25em;
+    overflow: visible;
+    position: relative;
+    top: 1px;
+    &::before {
+      font-family: "Material Symbols Outlined";
+      font-variation-settings: 'FILL' 1;
+      content: '\e5d4';
+    }
+    &:hover {
+      background-color: rgba(240, 248, 255, 0.25);
+      border-color: rgba(128, 128, 128, 0.25);
+      border-radius: calc((1.5rem - 2px) / 2);
+    }
+  }
+  & dd[id*="Stt"]:not(:empty),
+  & dd[id*="SkillLv"]:not(:empty) {
+    grid-template-columns: max-content max-content;
+    padding-left: .1em;
+    text-align: right;
+    font-size: .9em;
+    font-family: var(--base-font-family-input);
+    white-space: nowrap;
+  }
+  & dd[id*="Stt"]:not(:empty)::after,
+  & dd[id*="SkillLv"]:not(:empty)::after {
+    content: '+';
+    display: inline;
+    margin-right: -.1rem;
+  }
+}
+#combo .combo-table .combo-out dd:nth-of-type(n+29) { /* 条件の５行目（デフォルトでは非表示） */
+  display: none;
+}
+#combo.original-renegade-mode .combo-table .combo-out dd:nth-of-type(n+29) { /* 条件の５行目（起源種のみ表示） */
+  display: grid;
+}
+#combo .combo-table .combo-note {
+  padding-top: .5rem;
+}
+#combo .annotate {
+  padding-top: .2em;
+}
+@media screen and (width <= 735px){
+  #combo .combo-table {
+    padding: .5em 0;
+    grid-template-columns: 1.5em 11fr;
+    grid-template-areas:
+      "HNDL NAME"
+      "COMB COMB"
+      "  IN   IN"
+      " OUT  OUT"
+      "NOTE NOTE"
+      "OTHR OTHR"
+    ;
+  }
+  #combo .combo-table .combo-name {
+    text-align: left;
+  }
+  #combo .combo-table .combo-combo {
+    display: block;
+  }
+  #combo .combo-table .combo-out .combo-cond .combo-condition-utility::before {
+    transform: scale(1.3);
+  }
+}
+
+
+
+#history table colgroup {
+  :first-child{ width: 1.4em; }
+  .date       { width:   6em; }
+  .title      { width:  12em; }
+  .exp        { width:   6em; }
+  .apply      { width: 3.5em; }
+  .gm         { width:   6em; }
+  .member     { width:  auto; }
+}
+@media screen and (width <= 735px){
+  #history table {
+    table-layout: fixed;
+    > colgroup {
+      .title  { width: 12em; }
+      .member { width: 16em; }
+    }
+  }
+}
+#history table thead {
+  & td.apply {
+    border-left: 0px hidden;
+    font-size: 83%;
+  }
+  & td.apply input {
+    transform: none;
+    vertical-align: text-top;
+  }
+}
+#history table tbody {
+  & td.exp input {
+    width: 100%;
+    border-radius: 5px 0 0 5px;
+  }
+  & td.apply {
+    position: relative;
+    & label {
+      position: absolute;
+      top: .5rem;
+      left: 0;
+      right: .2rem;
+      bottom: .2rem;
+      display: block;
+      margin: 0;
+      border: 1px solid var(--box-input-border-color);
+      border-radius: 0 5px 5px 0;
+      border-left: 0;
+      > input {
+        padding: 0;
+        vertical-align: text-top;
+        transform: none;
+      }
+      > b {
+        font-size: 90%;
+      }
+      > input:not(:checked) + b {
+        opacity: 0.5;
+        font-weight: normal;
+      }
+      &:hover {
+        background-color: var(--bg-color);
+        > input:not(:checked) + b {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}
+
+
+
+#exp-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1em;
+  padding: .2rem 0 .5rem;
+  border-radius: 0;
+  border-width: .2rem 0;
+  background: var(--bg-color);
+  font-size: 85%;
+  font-weight: bold;
+  
+  .minus {
+    color: #e70;
+  }
+}

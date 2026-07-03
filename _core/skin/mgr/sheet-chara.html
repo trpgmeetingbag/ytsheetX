@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <TMPL_INCLUDE NAME="../_common/sheet-head.html">
+</head>
+
+<body>
+  <header>
+    <h1><a href="./">
+        <TMPL_VAR title>
+      </a></h1>
+    <nav>
+      <ul>
+        <TMPL_LOOP Menu>
+          <li class="<TMPL_VAR SIZE>"><a <TMPL_VAR TYPE>="<TMPL_VAR VALUE>"><TMPL_VAR TEXT></a>
+        </TMPL_LOOP>
+        <li><a onclick="nightModeChange()" class="nightmode-icon" title="ナイトモード"></a>
+      </ul>
+    </nav>
+  </header>
+  <div class="header-back-name">
+    <TMPL_VAR titleName> - <TMPL_VAR title>
+  </div>
+
+  <TMPL_IF error>
+    <aside id="error">
+      <p>
+        <TMPL_VAR error>
+      </p>
+    </aside>
+  </TMPL_IF>
+
+  <TMPL_UNLESS modeDownload>
+    <TMPL_UNLESS forbiddenMode>
+      <aside id="loglist" class="float-box">
+        <h2>過去ログ（バックアップ）</h2>
+        <ul>
+          <TMPL_LOOP LogList>
+            <li class="<TMPL_VAR SELECTED>"><a href="?id=<TMPL_VAR id><TMPL_VAR URL>">
+                <TMPL_VAR DATE>
+              </a>
+          </TMPL_LOOP>
+        </ul>
+        <TMPL_IF viewLogNaming>
+          <details id="log-naming">
+            <summary>閲覧中のログ<TMPL_IF selectedLogName>の名前をつけなおす<TMPL_ELSE>に名前をつける</TMPL_IF>
+            </summary>
+            <form id="log-naming-form" method="post" action="./">
+              <input type="hidden" name="mode" value="bu-naming">
+              <input type="hidden" name="id" value="<TMPL_VAR id>">
+              <input type="hidden" name="date" value="<TMPL_VAR logId>">
+              <dl>
+                <dt>名前
+                <dd><input type="text" name="log-name" value="<TMPL_VAR selectedLogName>">
+                  <TMPL_IF reqdPassword>
+                <dt>パスワード
+                <dd><input type="password" name="pass">
+        </TMPL_IF>
+        <dd><input type="submit" value="命名">
+          </dl>
+          </form>
+          </details>
+          </TMPL_IF>
+      </aside>
+
+      <aside id="downloadlist" class="float-box">
+        <h2>出力</h2>
+        <ul>
+          <li id="downloadlist-udonarium"><a onclick="downloadAsUdonarium();">ユドナリウム用コマデータ<small>(zip形式ファイル)</small></a>
+          <li id="downloadlist-ccfolia"><a onclick="downloadAsCcfolia();">ココフォリア用コマデータ<small>(クリップボードへコピー)</small></a>
+          <li id="downloadlist-text"><a onclick="downloadAsText();">テキスト形式</a>
+          <li id="downloadlist-json"><a onclick="downloadAsJson();">JSON 形式</a>
+          <li id="downloadlist-html"><a onclick="downloadAsHtml();">HTML 形式</a>
+          <li id="downloadlist-zipped"><a onclick="downloadAsFullSet();">ZIP 形式（上記全部入り）</a>
+          <li class="link-tag"><span>ゆとシート内リンク用タグ<br><input type="text" onclick="this.select()"
+                value="[<TMPL_VAR rawName>#<TMPL_VAR id>]"></span>
+        </ul>
+      </aside>
+    </TMPL_UNLESS>
+
+    <form id="login-form" class="float-box" method="post" action="./">
+      <input type="hidden" name="mode" value="edit">
+      <input type="hidden" name="id" value="<TMPL_VAR id>">
+      <input type="password" name="pass" placeholder="password">
+      <input type="hidden" name="log" value="<TMPL_VAR logId>">
+      <input type="submit" value="編集">
+    </form>
+  </TMPL_UNLESS>
+
+  <main id="character">
+    <TMPL_IF forbidden>
+      <aside class="information attention">
+        閲覧が制限されているデータです。<br>
+        <TMPL_IF yourAuthor>あなた以外には一部または全てのデータが伏せられます。(<a href="./?id=<TMPL_VAR id>&checkView=1">⇒確認</a>)</TMPL_IF>
+      </aside>
+    </TMPL_IF>
+
+    <TMPL_IF logId>
+      <aside class="information log">
+        <h2>
+          <TMPL_VAR selectedLogName>
+        </h2>
+        <p>
+          <TMPL_VAR updateTime> 時点の過去ログ(バックアップ)データです。
+        </p>
+      </aside>
+    </TMPL_IF>
+
+    <TMPL_IF convertMode>
+      <aside class="information">
+        <a href="<TMPL_VAR convertUrl>" target="_blank">
+          <TMPL_VAR convertSource>
+        </a> のデータを表示しています。
+      </aside>
+    </TMPL_IF>
+
+    <article<TMPL_IF FellowMode> style="display:none"</TMPL_IF>>
+      <div id="area-name" class="color-set">
+        <h1 id="character-name">
+          <TMPL_IF aka><span id="aka">“<TMPL_VAR aka>”</span></TMPL_IF>
+          <TMPL_VAR characterName>
+        </h1>
+        <div>
+          <p id="update-time"><time>
+              <TMPL_VAR updateTime>
+            </time></p>
+          <p id="player-name">プレイヤー：<TMPL_VAR playerName>
+          </p>
+        </div>
+      </div>
+      </div>
+      <div id="tags">
+        <TMPL_IF group><a id="group" href="./?group=<TMPL_VAR group>">
+            <TMPL_VAR groupName>
+          </a></TMPL_IF>
+        <TMPL_LOOP AreaTags><i class="stage">
+            <TMPL_VAR TEXT>
+          </i></TMPL_LOOP>
+        <TMPL_LOOP Tags><a class="tag" href="./?tag=<TMPL_VAR URL>">
+            <TMPL_VAR TEXT>
+          </a></TMPL_LOOP>
+      </div>
+      <div class="column column-status"><!-- COLUMN -->
+        <div id="area-status">
+          <TMPL_IF image>
+            <div id="image" class="image"
+              style="background-image: url(<TMPL_VAR imageSrc>);background-size:<TMPL_VAR imageFit>;background-position:<TMPL_VAR imagePositionX>% <TMPL_VAR imagePositionY>%;">
+              <div onclick="popImage()">
+                <p class="words" style="<TMPL_VAR wordsX><TMPL_VAR wordsY>">
+                  <TMPL_VAR words>
+                </p>
+              </div>
+              <p class="image-copyright">
+                <TMPL_VAR imageCopyright>
+              </p>
+            </div>
+            <TMPL_ELSE>
+              <div id="image-none" class="image-none" data-title="MG&#13;&#10;R">
+                <p class="words" style="<TMPL_VAR wordsX><TMPL_VAR wordsY>">
+                  <TMPL_VAR words>
+                </p>
+              </div>
+          </TMPL_IF>
+
+          <div id="personal" class="box-union">
+
+            <dl class="box">
+              <dt>性別</dt>
+              <dd>
+                <TMPL_VAR gender>
+              </dd>
+            </dl>
+            <dl class="box">
+              <dt>年齢</dt>
+              <dd>
+                <TMPL_VAR age>
+              </dd>
+            </dl>
+            <dl class="box">
+              <dt>カバー</dt>
+              <dd>
+                <TMPL_VAR cover>
+              </dd>
+            </dl>
+
+            <dl class="box mecha-name">
+              <dt>機体名</dt>
+              <dd>
+                <TMPL_VAR mechaName>
+              </dd>
+            </dl>
+            <dl class="box">
+              <dt>サイズ</dt>
+              <dd>
+                <TMPL_VAR mechaSize>
+              </dd>
+            </dl>
+          </div>
+
+          <div id="level-exp-area">
+
+            <div class="level-left-column">
+
+              <div class="box" id="level">
+                <h2>キャラクターレベル</h2>
+                <p class="level-value">
+                  <TMPL_VAR totalClassLv>
+                </p>
+              </div>
+
+              <div class="box" id="classes">
+                <h2>クラスレベル</h2>
+                <table class="data-table">
+                  <TMPL_LOOP Classes>
+                    <tr>
+                      <th>
+                        <TMPL_VAR NAME>
+                      </th>
+                      <td>
+                        <TMPL_VAR LV>
+                      </td>
+                    </tr>
+                  </TMPL_LOOP>
+                </table>
+              </div>
+
+            </div>
+
+            <div class="box" id="exp">
+              <h2>経験点</h2>
+              <table class="data-table exp-table">
+                <tbody>
+                  <tr>
+                    <th class="center">消費合計</th>
+                    <td>
+                      <TMPL_VAR expUsed>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="right">レベル</th>
+                    <td>
+                      <TMPL_VAR expUsedLevel>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="right">能力基本値</th>
+                    <td>
+                      <TMPL_VAR expUsedStt>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="right">常備化ポイント</th>
+                    <td>
+                      <TMPL_VAR expUsedJoubika>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="right">汎用特技</th>
+                    <td>
+                      <TMPL_VAR expUsedGeneralSkills>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="right">コネクション常備化</th>
+                    <td>
+                      <TMPL_VAR expUsedConnections>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="center">未使用</th>
+                    <td>
+                      <TMPL_VAR expRest>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+
+          <div class="box-union" id="personal-details">
+            <div class="box" id="lifepath">
+              <h2 class="in-toc">ライフパス</h2>
+              <table class="data-table line-tbody">
+                <colgroup>
+                  <col style="width: 6.5em;">
+                  <col style="width: auto;">
+                </colgroup>
+                <tbody>
+                  <tr>
+                    <th class="left">出自</th>
+                    <td class="note" rowspan="2">
+                      <TMPL_VAR lifepathOriginNote>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="center">
+                      <TMPL_VAR lifepathOrigin>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody>
+                  <tr>
+                    <th class="left">経験</th>
+                    <td class="note" rowspan="2">
+                      <TMPL_VAR lifepathExperienceNote>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="center">
+                      <TMPL_VAR lifepathExperience>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody>
+                  <tr>
+                    <th class="left">邂逅</th>
+                    <td class="note" rowspan="2">
+                      <TMPL_VAR lifepathEncounterNote>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="center">
+                      <TMPL_VAR lifepathEncounter>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <TMPL_IF Missions>
+              <div class="box" id="missions">
+                <h2 class="in-toc">ミッション</h2>
+                <ul>
+                  <TMPL_LOOP Missions>
+                    <li>
+                      <TMPL_VAR NOTE>
+                    </li>
+                  </TMPL_LOOP>
+                </ul>
+              </div>
+            </TMPL_IF>
+
+            <div class="box" id="connections">
+              <h2 class="in-toc">コネクション</h2>
+              <table class="data-table line-tbody">
+                <thead>
+                  <tr>
+                    <th class="joubi">常</th>
+                    <th class="name">名前</th>
+                    <th class="relation">関係</th>
+                  </tr>
+                </thead>
+                <TMPL_LOOP Connections>
+                  <tbody>
+                    <tr>
+                      <td <TMPL_IF NOTE>rowspan="2"</TMPL_IF> class="joubi"><TMPL_VAR JOUBI>
+                      </td>
+                      <td class="name">
+                        <TMPL_VAR NAME>
+                      </td>
+                      <td class="relation">
+                        <TMPL_VAR RELATION>
+                      </td>
+                    </tr>
+                    <TMPL_IF NOTE>
+                      <tr>
+                        <td colspan="2" class="note">
+                          <TMPL_VAR NOTE>
+                        </td>
+                      </tr>
+                    </TMPL_IF>
+                  </tbody>
+                </TMPL_LOOP>
+              </table>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="box" id="status">
+          <h2 class="in-toc">
+            能力値
+            <button class="open-button" id="status-toggle-btn" data-text-open="能力値内訳を表示" data-text-close="能力値内訳を畳む"
+              onclick="toggleStatusBreakdown()"></button>
+          </h2>
+          <table class="data-table" id="status-main">
+            <colgroup>
+              <col class="name">
+              <col class="ability-col">
+              <col class="ability-col">
+              <col class="ability-col">
+              <col class="ability-col">
+              <col class="ability-col">
+              <col class="ability-col">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="name"></th>
+                <th>体力</th>
+                <th>反射</th>
+                <th>知覚</th>
+                <th>理知</th>
+                <th>意志</th>
+                <th>幸運</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="breakdown-row">
+                <td class="name">
+                  <TMPL_VAR sttBase1Class>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Tai>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Han>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Chi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Ri>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Ishi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase1Kou>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <td class="name">
+                  <TMPL_VAR sttBase2Class>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Tai>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Han>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Chi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Ri>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Ishi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase2Kou>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <td class="name">
+                  <TMPL_VAR sttBase3Class>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Tai>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Han>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Chi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Ri>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Ishi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBase3Kou>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <th class="name">割り振り</th>
+                <td>
+                  <TMPL_IF sttPointTai>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+                <td>
+                  <TMPL_IF sttPointHan>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+                <td>
+                  <TMPL_IF sttPointChi>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+                <td>
+                  <TMPL_IF sttPointRi>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+                <td>
+                  <TMPL_IF sttPointIshi>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+                <td>
+                  <TMPL_IF sttPointKou>1<TMPL_ELSE>0</TMPL_IF>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <th class="name">成長</th>
+                <td>
+                  <TMPL_VAR sttGrowTai>
+                </td>
+                <td>
+                  <TMPL_VAR sttGrowHan>
+                </td>
+                <td>
+                  <TMPL_VAR sttGrowChi>
+                </td>
+                <td>
+                  <TMPL_VAR sttGrowRi>
+                </td>
+                <td>
+                  <TMPL_VAR sttGrowIshi>
+                </td>
+                <td>
+                  <TMPL_VAR sttGrowKou>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <th class="name">特技の修正</th>
+                <td>
+                  <TMPL_VAR sttSkillTai>
+                </td>
+                <td>
+                  <TMPL_VAR sttSkillHan>
+                </td>
+                <td>
+                  <TMPL_VAR sttSkillChi>
+                </td>
+                <td>
+                  <TMPL_VAR sttSkillRi>
+                </td>
+                <td>
+                  <TMPL_VAR sttSkillIshi>
+                </td>
+                <td>
+                  <TMPL_VAR sttSkillKou>
+                </td>
+              </tr>
+              <tr class="breakdown-row">
+                <th class="name">その他の修正</th>
+                <td>
+                  <TMPL_VAR sttOtherTai>
+                </td>
+                <td>
+                  <TMPL_VAR sttOtherHan>
+                </td>
+                <td>
+                  <TMPL_VAR sttOtherChi>
+                </td>
+                <td>
+                  <TMPL_VAR sttOtherRi>
+                </td>
+                <td>
+                  <TMPL_VAR sttOtherIshi>
+                </td>
+                <td>
+                  <TMPL_VAR sttOtherKou>
+                </td>
+              </tr>
+
+              <tr class="breakdown-row modifier-row">
+                <th class="name">能力値ボーナスへの修正</th>
+                <td>
+                  <TMPL_VAR sttBonusAddTai>
+                </td>
+                <td>
+                  <TMPL_VAR sttBonusAddHan>
+                </td>
+                <td>
+                  <TMPL_VAR sttBonusAddChi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBonusAddRi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBonusAddIshi>
+                </td>
+                <td>
+                  <TMPL_VAR sttBonusAddKou>
+                </td>
+              </tr>
+
+              <tr class="total-row">
+                <th class="name">能力値基本値</th>
+                <td>
+                  <TMPL_VAR sttTotalTai>
+                </td>
+                <td>
+                  <TMPL_VAR sttTotalHan>
+                </td>
+                <td>
+                  <TMPL_VAR sttTotalChi>
+                </td>
+                <td>
+                  <TMPL_VAR sttTotalRi>
+                </td>
+                <td>
+                  <TMPL_VAR sttTotalIshi>
+                </td>
+                <td>
+                  <TMPL_VAR sttTotalKou>
+                </td>
+              </tr>
+
+              <tr class="bonus-row">
+                <th class="name">能力ボーナス</th>
+                <td><b>
+                    <TMPL_VAR sttBonusTai>
+                  </b></td>
+                <td><b>
+                    <TMPL_VAR sttBonusHan>
+                  </b></td>
+                <td><b>
+                    <TMPL_VAR sttBonusChi>
+                  </b></td>
+                <td><b>
+                    <TMPL_VAR sttBonusRi>
+                  </b></td>
+                <td><b>
+                    <TMPL_VAR sttBonusIshi>
+                  </b></td>
+                <td><b>
+                    <TMPL_VAR sttBonusKou>
+                  </b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <script>
+          function toggleStatusBreakdown() {
+            const table = document.getElementById('status-main');
+            const btn = document.getElementById('status-toggle-btn');
+            const isOpen = table.classList.toggle('show-breakdown');
+            btn.dataset.open = isOpen ? 'true' : '';
+          }
+        </script>
+
+
+
+
+        <div class="box" id="battle-values">
+          <h2 class="in-toc">
+            戦闘値と装備
+            <div class="heading-controls">
+              <select name="equip-set-select">
+                <option value="">装備セットを選択</option>
+                <option value="1">セット1</option>
+                <option value="2">セット2</option>
+              </select>
+              <button class="open-button" id="battle-toggle-btn" data-text-open="戦闘値と装備の詳細を表示"
+                data-text-close="戦闘値と装備の詳細を畳む" onclick="toggleBattleDetail()"></button>
+            </div>
+          </h2>
+          <table class="data-table" id="battle-table">
+            <colgroup>
+              <col class="col-equip">
+              <col class="col-part">
+              <col class="col-name">
+              <col class="col-battle" span="11">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>装</th>
+                <th>部位</th>
+                <th>名称</th>
+                <th>命中</th>
+                <th>回避</th>
+                <th>砲撃</th>
+                <th>防壁</th>
+                <th>行動</th>
+                <th>力場</th>
+                <th>耐久</th>
+                <th>感応</th>
+                <th>移動</th>
+                <th>攻撃</th>
+                <th>常備</th>
+              </tr>
+            </thead>
+
+            <tbody class="battle-calc-area breakdown-row">
+              <tr class="battle-base-add">
+                <th colspan="3" class="right">ベースの修正値</th>
+                <td>
+                  <TMPL_VAR battleBaseAddMeichu>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddKaihi>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddHougeki>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddBouheki>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddKoudou>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddRikiba>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddTaikyu>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddKannou>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddIdou>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseAddKougeki>
+                </td>
+                <td></td>
+              </tr>
+              <tr class="battle-base">
+                <th colspan="3" class="right">ベース</th>
+                <td>
+                  <TMPL_VAR battleBaseMeichu>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseKaihi>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseHougeki>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseBouheki>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseKoudou>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseRikiba>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseTaikyu>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseKannou>
+                </td>
+                <td>
+                  <TMPL_VAR battleBaseIdou>
+                </td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+
+            <tbody id="battle-classes-area" class="breakdown-row">
+              <TMPL_LOOP BattleClasses>
+                <tr>
+                  <td class="col-equip"></td>
+                  <td class="col-part"></td>
+                  <td class="col-name left">
+                    <TMPL_VAR NAME>(<TMPL_VAR LV>)
+                  </td>
+
+                  <td>
+                    <TMPL_VAR MEICHU>
+                  </td>
+                  <td>
+                    <TMPL_VAR KAIHI>
+                  </td>
+                  <td>
+                    <TMPL_VAR HOUGEKI>
+                  </td>
+                  <td>
+                    <TMPL_VAR BOUHEKI>
+                  </td>
+                  <td>
+                    <TMPL_VAR KOUDOU>
+                  </td>
+                  <td>
+                    <TMPL_VAR RIKIBA>
+                  </td>
+                  <td>
+                    <TMPL_VAR TAIKYU>
+                  </td>
+                  <td>
+                    <TMPL_VAR KANNOU>
+                  </td>
+                  <td class="dead-space"></td>
+                  <td>
+                    <TMPL_VAR KOUGEKI>
+                  </td>
+                  <td class="dead-space"></td>
+                </tr>
+              </TMPL_LOOP>
+            </tbody>
+
+            <tbody class="battle-subtotal-area">
+              <tr class="battle-subtotal">
+                <th colspan="3" class="right">未装備小計</th>
+                <td>
+                  <TMPL_VAR battleSubtotalMeichu>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalKaihi>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalHougeki>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalBouheki>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalKoudou>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalRikiba>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalTaikyu>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalKannou>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalIdou>
+                </td>
+                <td>
+                  <TMPL_VAR battleSubtotalKougeki>
+                </td>
+                <td></td>
+              </tr>
+            </tbody>
+
+            <tbody id="armaments-view-area">
+              <TMPL_LOOP Armaments>
+                <TMPL_UNLESS IS_MANUAL_DEF>
+                <tr class="<TMPL_IF IS_WEAPON>is-weapon</TMPL_IF>" data-id="<TMPL_VAR ID>">
+                  <td class="col-equip">
+                    <input type="checkbox" onchange="calcBattleSimulation()" <TMPL_VAR CHECKED>>
+                    <input type="hidden" class="val-set" value="<TMPL_VAR SET>">
+                  </td>
+                  <td class="col-part">
+                    <TMPL_VAR PART>
+                  </td>
+                  <td class="col-name left">
+                    <TMPL_VAR NAME>
+                  </td>
+                  <td class="val-meichu">
+                    <TMPL_VAR MEICHU>
+                  </td>
+                  <td class="val-kaihi">
+                    <TMPL_VAR KAIHI>
+                  </td>
+                  <td class="val-hougeki">
+                    <TMPL_VAR HOUGEKI>
+                  </td>
+                  <td class="val-bouheki">
+                    <TMPL_VAR BOUHEKI>
+                  </td>
+                  <td class="val-koudou">
+                    <TMPL_VAR KOUDOU>
+                  </td>
+                  <td class="val-rikiba">
+                    <TMPL_VAR RIKIBA>
+                  </td>
+                  <td class="val-taikyu">
+                    <TMPL_VAR TAIKYU>
+                  </td>
+                  <td class="val-kannou">
+                    <TMPL_VAR KANNOU>
+                  </td>
+                  <td class="val-idou">
+                    <TMPL_VAR IDOU>
+                  </td>
+                  <td class="col-atk val-kougeki">
+                    <TMPL_VAR KOUGEKI>
+                  </td>
+                  <td class="val-joubi">
+                    <TMPL_VAR JOUBI>
+                  </td>
+                </tr>
+                </TMPL_UNLESS>
+              </TMPL_LOOP>
+            </tbody>
+
+
+            <tfoot>
+              <tr class="total-row">
+                <th colspan="3" class="right">合計</th>
+                <td>
+                  <TMPL_VAR battleTotalMeichu>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalKaihi>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalHougeki>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalBouheki>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalKoudou>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalRikiba>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalTaikyu>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalKannou>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalIdou>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalKougeki>
+                </td>
+                <td>
+                  <TMPL_VAR battleTotalJoubi>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="box" id="weaponry">
+          <h2 class="in-toc">武装</h2>
+          <table class="data-table line-tbody" id="weapon-table">
+            <thead>
+              <tr>
+                <th class="col-part">部位</th>
+                <th class="col-name">名称</th>
+                <th class="col-atk-total">攻撃力</th>
+                <th class="col-range">射程</th>
+                <th class="col-cost">代償</th>
+                <th class="col-ammo">弾数</th>
+                <th class="col-type">種別</th>
+              </tr>
+            </thead>
+            <TMPL_LOOP Armaments>
+              <TMPL_IF IS_WEAPON>
+                <tbody class="mecha-row-group" id="weapon-tbody-<TMPL_VAR ID>">
+                  <tr>
+                    <td rowspan="<TMPL_IF NOTE>2<TMPL_ELSE>1</TMPL_IF>" class="col-part">
+                      <TMPL_VAR PART>
+                    </td>
+                    <td rowspan="<TMPL_IF NOTE>2<TMPL_ELSE>1</TMPL_IF>" class="col-name left">
+                      <TMPL_VAR NAME>
+                    </td>
+                    <td class="col-atk-total" data-base-atk="<TMPL_VAR KOUGEKI>" data-zokusei="<TMPL_VAR ZOKUSEI>"></td>
+                    <td class="col-range">
+                      <TMPL_VAR SHATEI>
+                    </td>
+                    <td class="col-cost">
+                      <TMPL_VAR DAISHOU>
+                    </td>
+                    <td class="col-ammo">
+                      <TMPL_VAR DANZUU>
+                    </td>
+                    <td class="col-type">
+                      <TMPL_VAR TYPE>
+                    </td>
+                  </tr>
+                  <TMPL_IF NOTE>
+                    <tr>
+                      <td colspan="5" class="note">
+                        <TMPL_VAR NOTE>
+                      </td>
+                    </tr>
+                  </TMPL_IF>
+                </tbody>
+              </TMPL_IF>
+            </TMPL_LOOP>
+          </table>
+        </div>
+
+        <div class="box" id="mecha-data">
+          <h2 class="in-toc">機体データ</h2>
+          <table class="data-table line-tbody" id="mecha-data-table">
+            <thead>
+              <tr>
+                <th rowspan="2" class="col-part">部位</th>
+                <th rowspan="2" class="col-name">名称</th>
+                <th colspan="8">防御修正</th>
+                <th rowspan="2" class="col-size">サイズ</th>
+                <th rowspan="2" class="col-type">種別</th>
+              </tr>
+              <tr>
+                <th class="col-def">斬</th>
+                <th class="col-def">刺</th>
+                <th class="col-def">殴</th>
+                <th class="col-def">炎</th>
+                <th class="col-def">氷</th>
+                <th class="col-def">雷</th>
+                <th class="col-def">光</th>
+                <th class="col-def">闇</th>
+              </tr>
+            </thead>
+            <TMPL_LOOP Armaments>
+              <TMPL_UNLESS IS_WEAPON>
+                <tbody class="mecha-row-group" id="mecha-tbody-<TMPL_VAR ID>">
+                  <tr>
+                    <td rowspan="<TMPL_IF NOTE>2<TMPL_ELSE>1</TMPL_IF>" class="col-part">
+                      <TMPL_VAR PART>
+                    </td>
+                    <td rowspan="<TMPL_IF NOTE>2<TMPL_ELSE>1</TMPL_IF>" class="col-name left">
+                      <TMPL_VAR NAME>
+                    </td>
+                    <td class="col-def val-zan">
+                      <TMPL_VAR ZAN>
+                    </td>
+                    <td class="col-def val-totsu">
+                      <TMPL_VAR TOTSU>
+                    </td>
+                    <td class="col-def val-ou">
+                      <TMPL_VAR OU>
+                    </td>
+                    <td class="col-def val-en">
+                      <TMPL_VAR EN>
+                    </td>
+                    <td class="col-def val-hyou">
+                      <TMPL_VAR HYOU>
+                    </td>
+                    <td class="col-def val-rai">
+                      <TMPL_VAR RAI>
+                    </td>
+                    <td class="col-def val-kou">
+                      <TMPL_VAR KOU>
+                    </td>
+                    <td class="col-def val-yami">
+                      <TMPL_VAR YAMI>
+                    </td>
+                    <td class="col-size">
+                      <TMPL_VAR SIZE>
+                    </td>
+                    <td class="col-type">
+                      <TMPL_VAR TYPE>
+                    </td>
+                  </tr>
+                  <TMPL_IF NOTE>
+                    <tr>
+                      <td colspan="10" class="note">
+                        <TMPL_VAR NOTE>
+                      </td>
+                    </tr>
+                  </TMPL_IF>
+                </tbody>
+              </TMPL_UNLESS>
+            </TMPL_LOOP>
+            <tfoot>
+              <tr class="total-row">
+                <th colspan="2" class="right">合計値</th>
+                <td id="mecha-total-zan">0</td>
+                <td id="mecha-total-totsu">0</td>
+                <td id="mecha-total-ou">0</td>
+                <td id="mecha-total-en">0</td>
+                <td id="mecha-total-hyou">0</td>
+                <td id="mecha-total-rai">0</td>
+                <td id="mecha-total-kou">0</td>
+                <td id="mecha-total-yami">0</td>
+                <td colspan="2" class="dead-space"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <script>
+
+          /**
+           * 装備セットの抽出とセレクトボックスの構築
+           */
+          function initEquipSets() {
+            const select = document.querySelector('select[name="equip-set-select"]');
+            if (!select) return;
+
+            const rows = document.querySelectorAll('#armaments-view-area tr');
+            const sets = new Set();
+
+            rows.forEach(row => {
+              const checkbox = row.querySelector('input[type="checkbox"]');
+              const setInput = row.querySelector('.val-set');
+
+              // 初期状態を記憶
+              if (checkbox) {
+                checkbox.dataset.initialCheck = checkbox.checked ? 'true' : 'false';
+              }
+
+              // セット名を抽出
+              if (setInput && setInput.value) {
+                const parts = setInput.value.split(/[/,、\s　]+/);
+                parts.forEach(p => { if (p.trim()) sets.add(p.trim()); });
+              }
+            });
+
+            // セレクトボックス再構築
+            select.innerHTML = '<option value="">装備セットを選択</option>';
+            select.add(new Option('初期状態に戻す', '初期'));
+            Array.from(sets).sort().forEach(s => {
+              if (s !== '初期') select.add(new Option(s, s));
+            });
+
+            select.addEventListener('change', function () {
+              const targetSet = this.value;
+              if (!targetSet) return;
+
+              rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (!checkbox) return;
+
+                if (targetSet === '初期') {
+                  checkbox.checked = (checkbox.dataset.initialCheck === 'true');
+                } else {
+                  const setVal = row.querySelector('.val-set')?.value || '';
+                  const parts = setVal.split(/[/,、\s　]+/).map(s => s.trim());
+                  checkbox.checked = parts.includes(targetSet);
+                }
+              });
+              calcBattleSimulation();
+            });
+          }
+
+          function toggleBattleDetail() {
+            const tables = ['battle-table', 'weapon-table', 'mecha-data-table'];
+            const btn = document.getElementById('battle-toggle-btn');
+            let isOpen = false;
+
+            tables.forEach(id => {
+              const t = document.getElementById(id);
+              if (t) isOpen = t.classList.toggle('show-detail');
+            });
+
+            btn.dataset.open = isOpen ? 'true' : '';
+            calcBattleSimulation();
+          }
+
+          /**
+           * 戦闘値計算と各セクションの表示同期
+           */
+function calcBattleSimulation() {
+            const battleTable = document.getElementById('battle-table');
+            if (!battleTable) return;
+            const rows = battleTable.querySelectorAll('#armaments-view-area tr');
+            const subtotalRow = battleTable.querySelector('.battle-subtotal');
+
+            const stats = ['meichu', 'kaihi', 'hougeki', 'bouheki', 'koudou', 'rikiba', 'taikyu', 'kannou', 'idou', 'kougeki', 'joubi'];
+            let totals = {};
+            let mechaTotals = { zan: 0, totsu: 0, ou: 0, en: 0, hyou: 0, rai: 0, kou: 0, yami: 0 };
+
+            const activeEl = document.activeElement;
+            const isTriggeredByCheckbox = activeEl 
+                && (typeof activeEl.matches === 'function') 
+                && activeEl.matches('#armaments-view-area input[type="checkbox"]');
+
+            if (!isTriggeredByCheckbox) {
+              rows.forEach(row => row.classList.remove('temp-retained'));
+            }
+
+            if (subtotalRow) {
+              stats.forEach((st, idx) => {
+                const td = subtotalRow.cells[idx + 1];
+                totals[st] = parseInt(td?.textContent) || 0;
+              });
+            }
+
+            rows.forEach(row => {
+              const armId = row.dataset.id;
+              if (!armId) return; // 安全対策: IDがない行（ヘッダーなど）はスキップ
+              
+              const checkbox = row.querySelector('input[type="checkbox"]');
+              if (!checkbox) return; // チェックボックスがない行（メモ行など）はスキップ
+
+              const isChecked = checkbox.checked;
+              const isWeapon = row.classList.contains('is-weapon');
+
+              // --- 一時残留フラグの管理 ---
+              if (isTriggeredByCheckbox && activeEl === checkbox && !isChecked) {
+                row.classList.add('temp-retained');
+              }
+              if (isChecked) {
+                row.classList.remove('temp-retained');
+              }
+
+              // --- 1. 戦闘値テーブルの表示制御 ---
+              const shouldHide = !isChecked && !row.classList.contains('temp-retained');
+              row.classList.toggle('breakdown-row', shouldHide);
+              row.style.opacity = isChecked ? '' : '0.5';
+
+              // 数値計算
+              totals['joubi'] += parseInt(row.querySelector('.val-joubi')?.textContent) || 0;
+              if (isChecked) {
+                stats.forEach(st => {
+                  if (st === 'joubi') return;
+                  if (st === 'kougeki' && isWeapon) return;
+                  totals[st] += parseInt(row.querySelector(`.val-${st}`)?.textContent) || 0;
+                });
+              }
+
+              // --- 2. 武装欄 (Weaponry) との同期 ---
+              const weaponTbody = document.getElementById(`weapon-tbody-${armId}`);
+              if (weaponTbody) {
+                if (isChecked) {
+                  weaponTbody.style.display = ''; // ★強制的に表示（初期状態の非表示設定を上書き）
+                  weaponTbody.classList.remove('breakdown-row');
+                } else {
+                  weaponTbody.style.display = 'none'; // ★確実に即時非表示
+                  weaponTbody.classList.add('breakdown-row');
+                }
+              }
+
+              // --- 3. 機体データ欄 (MechaData) との同期 ---
+              const mechaTbody = document.getElementById(`mecha-tbody-${armId}`);
+              if (mechaTbody) {
+                const zan = mechaTbody.querySelector('.val-zan')?.textContent?.trim() || '';
+                const totsu = mechaTbody.querySelector('.val-totsu')?.textContent?.trim() || '';
+                const ou = mechaTbody.querySelector('.val-ou')?.textContent?.trim() || '';
+                const en = mechaTbody.querySelector('.val-en')?.textContent?.trim() || '';
+                const hyou = mechaTbody.querySelector('.val-hyou')?.textContent?.trim() || '';
+                const rai = mechaTbody.querySelector('.val-rai')?.textContent?.trim() || '';
+                const kou = mechaTbody.querySelector('.val-kou')?.textContent?.trim() || '';
+                const yami = mechaTbody.querySelector('.val-yami')?.textContent?.trim() || '';
+                const size = mechaTbody.querySelector('.col-size')?.textContent?.trim() || '';
+                const type = mechaTbody.querySelector('.col-type')?.textContent?.trim() || '';
+                const note = mechaTbody.querySelector('.note')?.textContent?.trim() || '';
+
+                const hasAnyData = [zan, totsu, ou, en, hyou, rai, kou, yami, size, type, note].some(val => val !== '' && val !== '―');
+
+                if (hasAnyData) {
+                  if (isChecked) {
+                    mechaTbody.style.display = ''; // ★強制表示
+                    mechaTbody.classList.remove('breakdown-row');
+                    mechaTotals.zan += parseInt(zan) || 0;
+                    mechaTotals.totsu += parseInt(totsu) || 0;
+                    mechaTotals.ou += parseInt(ou) || 0;
+                    mechaTotals.en += parseInt(en) || 0;
+                    mechaTotals.hyou += parseInt(hyou) || 0;
+                    mechaTotals.rai += parseInt(rai) || 0;
+                    mechaTotals.kou += parseInt(kou) || 0;
+                    mechaTotals.yami += parseInt(yami) || 0;
+                  } else {
+                    mechaTbody.style.display = 'none'; // ★即時非表示
+                    mechaTbody.classList.add('breakdown-row');
+                  }
+                } else {
+                  mechaTbody.style.display = 'none';
+                  mechaTbody.classList.remove('breakdown-row');
+                }
+              }
+            });
+
+            // 合計表示の更新処理
+            const tfoot = battleTable.querySelector('tfoot .total-row');
+            if (tfoot) {
+              stats.forEach((st, idx) => {
+                const targetTd = tfoot.cells[idx + 1];
+                if (targetTd) targetTd.textContent = totals[st];
+              });
+            }
+
+            document.querySelectorAll('.col-atk-total[data-base-atk]').forEach(td => {
+              const baseAtk = parseInt(td.dataset.baseAtk) || 0;
+              const zokusei = td.dataset.zokusei ? `〈${td.dataset.zokusei}〉` : '';
+              const finalAtk = baseAtk + totals['kougeki'];
+              td.textContent = `${zokusei}＋${finalAtk}`;
+            });
+
+            // 機体データの合計値反映
+            const eZan = document.getElementById('mecha-total-zan');
+            if (eZan) eZan.textContent = mechaTotals.zan;
+            const eTotsu = document.getElementById('mecha-total-totsu');
+            if (eTotsu) eTotsu.textContent = mechaTotals.totsu;
+            const eOu = document.getElementById('mecha-total-ou');
+            if (eOu) eOu.textContent = mechaTotals.ou;
+            const eEn = document.getElementById('mecha-total-en');
+            if (eEn) eEn.textContent = mechaTotals.en;
+            const eHyou = document.getElementById('mecha-total-hyou');
+            if (eHyou) eHyou.textContent = mechaTotals.hyou;
+            const eRai = document.getElementById('mecha-total-rai');
+            if (eRai) eRai.textContent = mechaTotals.rai;
+            const eKou = document.getElementById('mecha-total-kou');
+            if (eKou) eKou.textContent = mechaTotals.kou;
+            const eYami = document.getElementById('mecha-total-yami');
+            if (eYami) eYami.textContent = mechaTotals.yami;
+
+            // --- 常備化ポイントの総合計算 ---
+            let itemsTotal = 0;
+            document.querySelectorAll('.val-item-joubi').forEach(td => {
+              itemsTotal += parseInt(td.textContent) || 0;
+            });
+
+            const armamentsTotal = totals['joubi']; 
+            const elMax = document.getElementById('joubika-max');
+            const maxJoubika = elMax ? parseInt(elMax.textContent) || 0 : 0;
+            const restJoubika = maxJoubika - itemsTotal - armamentsTotal;
+
+            const elItemsTotal = document.getElementById('joubika-items-total');
+            if (elItemsTotal) elItemsTotal.textContent = itemsTotal;
+            
+            const elArmsTotal = document.getElementById('joubika-armaments-total');
+            if (elArmsTotal) elArmsTotal.textContent = armamentsTotal;
+
+            const elRest = document.getElementById('joubika-rest');
+            if (elRest) {
+              elRest.textContent = restJoubika;
+              elRest.style.color = (restJoubika < 0) ? '#ff4444' : '';
+            }
+          }
+          // 初期化実行
+          window.addEventListener('load', () => {
+            initEquipSets();
+            calcBattleSimulation();
+          });
+
+        </script>
+
+
+
+
+      </div>
+      </div><!-- / COLUMN -->
+      <div class="column" id="column-skills"><!-- COLUMN -->
+        <TMPL_IF Kagos>
+          <div class="box" id="kagos">
+            <h2 class="in-toc">加護</h2>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th>効果</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TMPL_LOOP Kagos>
+                  <tr>
+                    <td>
+                      <TMPL_VAR NAME>
+                    </td>
+                    <td class="left">
+                      <TMPL_VAR NOTE>
+                    </td>
+                  </tr>
+                </TMPL_LOOP>
+              </tbody>
+            </table>
+          </div>
+        </TMPL_IF>
+
+
+
+
+
+        <section class="box skills" id="skills" data-full-open="false">
+          <h2>スキル</h2>
+          <button class="open-button" onclick="switchSkillNoteFullOpen();" data-open="false" data-text-open="効果を全展開"
+            data-text-close="効果を折畳む"></button>
+          <table class="data-table line-tbody">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>Lv</th>
+                <th>種別</th>
+                <th>タイミング</th>
+                <th>対象</th>
+                <th>射程</th>
+                <th>
+                  <div class="thin">代償</div>
+                </th>
+                <th><span class="small">取得元</span></th>
+                <th>参照</th>
+              </tr>
+            </thead>
+            <TMPL_LOOP Skills>
+              <tbody>
+                <tr>
+                  <td rowspan="2" class="name">
+                    <TMPL_VAR NAME>
+                  </td>
+                  <td class="lv">
+                    <TMPL_VAR LV>
+                  </td>
+                  <td class="category">
+                    <TMPL_VAR CATEGORY>
+                  </td>
+                  <td>
+                    <TMPL_VAR TIMING>
+                  </td>
+                  <td>
+                    <TMPL_VAR TARGET>
+                  </td>
+                  <td>
+                    <TMPL_VAR RANGE>
+                  </td>
+                  <td>
+                    <TMPL_VAR COST>
+                  </td>
+                  <td class="type">
+                    <TMPL_VAR TYPE>
+                  </td>
+                  <td>
+                    <TMPL_VAR REQD>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="note" colspan="8">
+                    <TMPL_VAR NOTE>
+                  </td>
+                </tr>
+              </tbody>
+            </TMPL_LOOP>
+          </table>
+          <!-- <p class="right">
+            汎用特技による消費経験点：[<TMPL_VAR exp-used-general-skills>]
+          </p> -->
+        </section>
+
+
+        <script>
+          let skillFullOpen = <TMPL_VAR skillFullOpen DEFAULT="false" />;
+          function switchSkillNoteFullOpen() {
+            skillFullOpen = !skillFullOpen;
+            document.getElementById('skills').dataset.fullOpen = skillFullOpen ? 'true' : '';
+            document.querySelector('#skills .open-button').dataset.open = skillFullOpen ? 'true' : '';
+          }
+        </script>
+
+
+
+
+        <div class="box" id="items">
+          <h2 class="in-toc">アイテム</h2>
+
+          <TMPL_IF Lifestyles>
+            <h3 class="item-head">ライフスタイル</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-name">名称</th>
+                  <th class="col-joubi">常備化</th>
+                  <th class="col-timing">タイミング</th>
+                  <th class="col-property">財産P</th>
+                  <th class="col-note">効果</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TMPL_LOOP Lifestyles>
+                  <tr>
+                    <td><TMPL_VAR NAME></td>
+                    <td class="val-item-joubi"><TMPL_VAR JOUBI></td>
+                    <td><TMPL_VAR TIMING></td>
+                    <td><TMPL_VAR PROPERTY></td>
+                    <td class="left"><TMPL_VAR NOTE></td>
+                  </tr>
+                </TMPL_LOOP>
+              </tbody>
+            </table>
+          </TMPL_IF>
+
+          <TMPL_IF Houses>
+            <h3 class="item-head">住宅</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-name">名称</th>
+                  <th class="col-joubi">常備化</th>
+                  <th class="col-timing">タイミング</th>
+                  <th class="col-note">効果</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TMPL_LOOP Houses>
+                  <tr>
+                    <td><TMPL_VAR NAME></td>
+                    <td class="val-item-joubi"><TMPL_VAR JOUBI></td>
+                    <td><TMPL_VAR TIMING></td>
+                    <td class="left"><TMPL_VAR NOTE></td>
+                  </tr>
+                </TMPL_LOOP>
+              </tbody>
+            </table>
+          </TMPL_IF>
+
+          <TMPL_IF Items>
+            <h3 class="item-head">一般アイテム</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-name">名称</th>
+                  <th class="col-joubi">常備化</th>
+                  <th class="col-timing">タイミング</th>
+                  <th class="col-note">効果</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TMPL_LOOP Items>
+                  <tr>
+                    <td><TMPL_VAR NAME></td>
+                    <td class="val-item-joubi"><TMPL_VAR JOUBI></td>
+                    <td><TMPL_VAR TIMING></td>
+                    <td class="left"><TMPL_VAR NOTE></td>
+                  </tr>
+                </TMPL_LOOP>
+              </tbody>
+            </table>
+          </TMPL_IF>
+
+          <div class="joubika-total-area">
+            <div class="joubika-summary-line">
+              アイテム：<span id="joubika-items-total">0</span> ／
+              武具：<span id="joubika-armaments-total">0</span>
+            </div>
+            <div class="joubika-result-line">
+              財産ポイント：<b>[<TMPL_VAR lifestylePropertyTotal>]</b> <br>
+              常備化ポイント：<b>残余 [<span id="joubika-rest">0</span>]</b> ／
+              最大値 [<span id="joubika-max">
+                <TMPL_VAR joubikaMax>
+              </span>]
+            </div>
+          </div>
+        </div>
+
+
+
+      </div><!-- / COLUMN -->
+
+
+      <section class="box" id="free-note">
+        <h2>
+          <TMPL_IF head_freeNote>
+            <TMPL_VAR head_freeNote>
+              <TMPL_ELSE>容姿・経歴・その他メモ
+          </TMPL_IF>
+        </h2>
+        <p>
+          <TMPL_VAR freeNote>
+        </p>
+      </section>
+
+
+      <div class="column-history">
+
+        <TMPL_IF freeHistory>
+          <section class="box" id="free-history">
+            <h2>
+              <TMPL_IF head_freeHistory>
+                <TMPL_VAR head_freeHistory>
+                  <TMPL_ELSE>履歴
+              </TMPL_IF>
+            </h2>
+            <p>
+              <TMPL_VAR freeHistory>
+            </p>
+          </section>
+        </TMPL_IF>
+
+
+
+        <section class="box" id="history">
+          <h2 class="in-toc">セッション履歴</h2>
+
+          <table class="data-table line-tbody" id="history-table">
+            <thead>
+              <tr>
+                <th>適用</th>
+                <th>No.</th>
+                <th>日付</th>
+                <th>タイトル</th>
+                <th class="exp">経験点</th>
+                <th>GM</th>
+                <th>参加者</th>
+              </tr>
+            </thead>
+            <TMPL_LOOP History>
+              <tbody>
+                <tr>
+                  <td rowspan="2" class="apply">
+                    <TMPL_IF APPLY>☑<TMPL_ELSE>☐</TMPL_IF>
+                  </td>
+                  <!-- <td rowspan="2">
+                    <TMPL_VAR APPLY>
+                      
+                  </td> -->
+                  <td rowspan="2">
+                    <TMPL_VAR NUM>
+                  </td>
+                  <td>
+                    <TMPL_VAR DATE>
+                  </td>
+                  <td class="left">
+                    <TMPL_VAR TITLE>
+                  </td>
+                  <td>
+                    <TMPL_VAR EXP>
+                  </td>
+                  <td>
+                    <TMPL_VAR GM>
+                  </td>
+                  <td class="left">
+                    <TMPL_VAR MEMBER>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="5" class="left" style="font-size: 0.9em; opacity: 0.9;">
+                    <TMPL_VAR NOTE>
+                  </td>
+                </tr>
+              </tbody>
+            </TMPL_LOOP>
+            <tfoot>
+              <tr>
+                <th colspan="4" class="right">取得総計（適用分のみ）</th>
+                <td class="exp">
+                  <TMPL_VAR historyExpTotal>
+                </td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+
+        <TMPL_IF SkillHistoryRows>
+        <section class="box box-v-gap" id="skill-history">
+          <h2 class="in-toc">
+            特技取得履歴
+            <button class="open-button" onclick="const w = document.getElementById('skill-history-wrapper'); const isOpen = w.style.display !== 'none'; w.style.display = isOpen ? 'none' : ''; this.dataset.open = isOpen ? '' : 'true';" data-open="false" data-text-open="履歴を展開" data-text-close="履歴を畳む"></button>
+          </h2>
+          <div id="skill-history-wrapper" style="display: none;">
+            <table class="data-table line-tbody" id="skill-history-table">
+            <thead>
+              <tr>
+                <th style="width: 4em;">取得Lv</th>
+                <TMPL_LOOP SkillHistoryHeaders>
+                  <th><TMPL_VAR NAME><TMPL_VAR LV_DISP></th>
+                </TMPL_LOOP>
+              </tr>
+            </thead>
+            <tbody>
+              <TMPL_LOOP SkillHistoryRows>
+                <tr>
+                  <th class="center"><TMPL_VAR LV></th>
+                  <TMPL_LOOP Cols>
+                    <td class="left <TMPL_IF DISABLED>disabled-cell</TMPL_IF>" style="vertical-align: top;">
+                      <TMPL_LOOP Items>
+                        <div class="skill-hist-item" <TMPL_IF IS_OVER>style="font-weight:bold; color:#ff4444;"</TMPL_IF>>
+                          <TMPL_VAR NAME>(<TMPL_VAR LV>)
+                        </div>
+                      </TMPL_LOOP>
+                    </td>
+                  </TMPL_LOOP>
+                </tr>
+              </TMPL_LOOP>
+            </tbody>
+          </table>
+          </div>
+        </section>
+        </TMPL_IF>
+
+      </div>
+
+      <TMPL_IF cashbook>
+        <section class="box" id="cashbook">
+          <h2>
+            <TMPL_IF head_cashbook>
+              <TMPL_VAR head_cashbook>
+                <TMPL_ELSE>収支履歴
+            </TMPL_IF>
+          </h2>
+          <div>
+            <p>
+              <TMPL_VAR cashbook>
+            </p>
+          </div>
+        </section>
+      </TMPL_IF>
+      <section class="box chat-palette float-box">
+        <h2>チャットパレット</h2>
+        <div class="chat-palette-menu">
+          <b>使用ツール:</b>
+          <a onclick="chatPaletteSelect('')" id="cp-switch-ytc">ゆとチャadv.</a>
+          <a onclick="chatPaletteSelect('tekey')" id="cp-switch-tekey">Tekey</a>
+          <a onclick="chatPaletteSelect('bcdice')" id="cp-switch-bcdice">他BCDice系</a>
+        </div>
+        <textarea id="chatPaletteBox"></textarea>
+      </section>
+      </article>
+      <div class="back-button"><a href="./">⏎</a></div>
+      <TMPL_IF image>
+        <div id="image-box" onclick="closeImage()">
+          <img src="<TMPL_VAR imageSrc>" id="image-box-image">
+        </div>
+      </TMPL_IF>
+  </main>
+  <TMPL_INCLUDE NAME="skin-add/sheet-sidebar.html">
+
+    <TMPL_VAR debugLog>
+      <footer>
+        <p class="notes">©FarEast Amusement Research Co.,Ltd.「メタリックガーディアンRPG」</p>
+        <p class="copyright">©<a href="https://yutorize.2-d.jp">ゆとらいず工房</a>「ゆとシートⅡ」ver.<TMPL_VAR ver>　……の改造品
+        </p>
+      </footer>
+      
+<script>
+  console.group("MGR Sheet Debug");
+  console.log("Template Variable [Armaments]:", <TMPL_VAR debugArmaments DEFAULT='[]'>);
+
+  console.groupEnd();
+</script>
+
+
+</body>
+
+</html>
