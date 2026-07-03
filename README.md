@@ -1,0 +1,2 @@
+# ytsheetX
+ytsheet2を改造してSRSとZQワークスに対応していく予定のゆとシート
