@@ -627,7 +627,7 @@ print <<"HTML";
               <td>@{[input "weapon${num}Range",'','','placeholder="射程" list="list-range"']}
               <td>@{[input "weapon${num}Damage",'','','placeholder="ダメージ" list="list-damage"']}
               <td>@{[input "weapon${num}Note",'','','placeholder="補記" list="list-weponnote"']}
-              <td>@{[input "weapon${num}Maint",'number','','placeholder="維持費" list="list-maint"']}
+              <td>@{[input "weapon${num}Maint",'number','calcWeapon','placeholder="維持費" list="list-maint"']}
               <td>@{[input "weapon${num}Ref",'','','placeholder="参照" list="list-reference"']}
             <tr class="custom-row-container">
               <td colspan="6" class="custom-cell">

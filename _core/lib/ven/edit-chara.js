@@ -365,6 +365,7 @@ function calcDebt() {
 }
 
 // ▼ 総クレジット計算（四則演算対応版） ▼
+// ▼ 総クレジット計算（四則演算対応版） ▼
 function calcCredit() {
   const weapon = parseInt(document.getElementById('credit-used-weapon')?.textContent || 0, 10);
   const custom = parseInt(document.getElementById('credit-used-custom')?.textContent || 0, 10);
@@ -409,16 +410,39 @@ function calcCredit() {
   const expenseView = document.getElementById('credit-expense');
   if (expenseView) expenseView.textContent = totalExpense;
 
-  // ▼維持費の内訳計算と表示
-  // レベルを取得
+  // ▼維持費の内訳計算と表示（価格からの割り出しではなく、入力欄から直接取得する）▼
   const levelInput = document.querySelector('input[name="level"]');
   const level = levelInput ? parseInt(levelInput.value, 10) || 0 : 0;
+  const maintBase = level * 10;
   
-  // 各項目の維持費（価格÷10 端数切り捨て）＋ レベル×10
-  const maintWeapon = Math.floor(weapon / 10);
-  const maintCustom = Math.floor(custom / 10);
-  const maintWear   = Math.floor(wear / 10);
-  const maintBase   = level * 10;
+  let maintWeapon = 0;
+  let maintCustom = 0;
+  let maintWear = 0;
+  
+  // 武器本体とカスタマイズの維持費を取得
+  const weaponNumInput = document.querySelector('input[name="weaponNum"]');
+  const weaponNum = weaponNumInput ? parseInt(weaponNumInput.value, 10) : 0;
+  for (let i = 1; i <= weaponNum; i++) {
+    // 武器本体の維持費
+    const wMaintInput = document.querySelector(`input[name="weapon${i}Maint"]`);
+    if (wMaintInput) maintWeapon += parseInt(wMaintInput.value, 10) || 0;
+    
+    // カスタマイズの維持費
+    const cNumInput = document.querySelector(`input[name="weapon${i}CustomNum"]`);
+    const customNum = cNumInput ? parseInt(cNumInput.value, 10) : 0;
+    for (let j = 1; j <= customNum; j++) {
+      const cMaintInput = document.querySelector(`input[name="weapon${i}Custom${j}Maint"]`);
+      if (cMaintInput) maintCustom += parseInt(cMaintInput.value, 10) || 0;
+    }
+  }
+
+  // ウェアの維持費を取得
+  const wearNumInput = document.querySelector('input[name="wearNum"]');
+  const wearNum = wearNumInput ? parseInt(wearNumInput.value, 10) : 0;
+  for (let i = 1; i <= wearNum; i++) {
+    const wearMaintInput = document.querySelector(`input[name="wear${i}Maint"]`);
+    if (wearMaintInput) maintWear += parseInt(wearMaintInput.value, 10) || 0;
+  }
   
   const totalMaint = maintWeapon + maintCustom + maintWear + maintBase;
   
@@ -449,6 +473,7 @@ function calcCredit() {
     restView.style.color = rest < 0 ? 'red' : 'inherit';
   }
 }
+
 
 // ▼ 武器・カスタマイズの計算 ▼
 function calcWeapon() {
