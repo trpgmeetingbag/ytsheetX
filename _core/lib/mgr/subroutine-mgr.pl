@@ -11,16 +11,59 @@ use Fcntl;
 ### ユニットステータス出力 --------------------------------------------------
 sub createUnitStatus {
   my %pc = %{$_[0]};
-  my @unitStatus = (
-    # { 'HP' => $pc{hpTotal}.'/'.$pc{hpTotal} },
-    # { 'MP' => $pc{mpTotal}.'/'.$pc{mpTotal} },
-    # { 'フェイト' => $pc{fateTotal}.'/'.$pc{fateTotal} },
-    { '行動値' => $pc{battleTotalKoudou} },
-    { 'FP' => ($pc{battleTotalRikiba} || 0) . '/' . ($pc{battleTotalRikiba} || 0) },
-    { 'HP' => ($pc{battleTotalTaikyu} || 0) . '/' . ($pc{battleTotalTaikyu} || 0) },
-    { 'EN' => ($pc{battleTotalKannou} || 0) . '/' . ($pc{battleTotalKannou} || 0) },
-    { 'ブレイク' => '0/1' }
-  );
+  my $target = $_[1] || '';
+  my @unitStatus;
+
+
+  # ===== エネミー（魔物）用の処理 =====
+  if ($pc{type} eq 'm') {
+    require $set::data_mons; # 辞書を確実に読み込む
+    my $sys_data  = $data::srs_system_mons{$pc{system}} || {};
+    my $resources = $sys_data->{resources} || {};
+    my @unitMemo;
+
+    # battleNumが取得できない場合の保険として「|| 15」を設定
+    for my $i (1 .. ($pc{battleNum} || 15)) {
+      my $name  = $pc{"battle${i}Name"};
+      my $val   = $pc{"battle${i}Value"};
+      next if !$name;
+
+      if ($resources->{$name} == 1) {
+        # 1指定: リソースとして現在値/最大値を出力（ココフォリアのバー等になる）
+        push(@unitStatus, { $name => "$val/$val" });
+      } elsif ($resources->{$name} == 2) {
+        # 2指定: ステータスとして現在値のみ出力
+        push(@unitStatus, { $name => $val });
+      } else {
+        # 3指定・未指定: リソースではない重要な戦闘値（VTTに応じてメモ等に退避）
+        if ($target eq 'udonarium') {
+          push(@unitStatus, { $name => $val });
+        } else {
+          push(@unitMemo, "$name:$val");
+        }
+      }
+    }
+
+    # SW2.5の思想を踏襲し、非リソース要素をココフォリア等ではメモに結合する
+    if (@unitMemo) {
+      if ($target eq 'udonarium') {
+        push(@unitStatus, {'メモ' => join(" ", @unitMemo)});
+      } elsif ($target eq 'ccfolia') {
+        push(@unitStatus, {'メモ' => join("\n", @unitMemo)});
+      } else {
+        push(@unitStatus, {'メモ' => join("<br>", @unitMemo)});
+      }
+    }
+  }
+  # ===== キャラクター（PC）用の処理（一切変更なし） =====
+  else {
+@unitStatus = (
+      { '行動値' => $pc{battleTotalKoudou} },
+      { 'FP' => ($pc{battleTotalRikiba} || 0) . '/' . ($pc{battleTotalRikiba} || 0) },
+      { 'HP' => ($pc{battleTotalTaikyu} || 0) . '/' . ($pc{battleTotalTaikyu} || 0) },
+      { 'EN' => ($pc{battleTotalKannou} || 0) . '/' . ($pc{battleTotalKannou} || 0) },
+      { 'ブレイク' => '0/1' }
+    );
 
   # ★追加：現在装備している乗機のサイズを取得
   my $mecha_size = '';
@@ -68,6 +111,7 @@ sub createUnitStatus {
   foreach my $key (split ',', $pc{unitStatusNotOutput}){
     @unitStatus = grep { !exists $_->{$key} } @unitStatus;
   }
+}
 
   foreach my $num (1..$pc{unitStatusNum}){
     next if !$pc{"unitStatus${num}Label"};
@@ -78,8 +122,21 @@ sub createUnitStatus {
   return \@unitStatus;
 }
 
+### テキスト整形ルール --------------------------------------------------
+## 複数行対応覧
+our %multilineTargets = (
+  ''  => '「容姿・経歴・その他メモ」「履歴（自由記入）」',
+);
+
 ### バージョンアップデート --------------------------------------------------
-sub data_update_chara {
+### バージョンアップデート --------------------------------------------------
+sub upgradeData {
+  my $data = $_[0];
+  my $type = $_[1];
+  if   ($type eq 'm'){ return upgradeMonsterData($data) }
+  else               { return upgradeCharaData($data) }
+}
+sub upgradeCharaData {
   my %pc = %{$_[0]};
   my $ver = $pc{ver};
   $ver =~ s/^([0-9]+)\.([0-9]+)\.([0-9]+)$/$1.$2$3/;
@@ -90,6 +147,20 @@ sub data_update_chara {
   }
   $pc{ver} = $main::ver;
   $pc{lasttimever} = $ver;
+  return %pc;
+}
+sub upgradeMonsterData {
+  my %pc = %{$_[0]};
+  my $ver = $pc{ver};
+  $ver =~ s/^([0-9]+)\.([0-9]+)\.([0-9]+)$/$1.$2$3/;
+  delete $pc{updateMessage};
+
+  if($ver < 1.26000){
+    $pc{partsManualInput} = 1;
+  }
+
+  $pc{lasttimever} = $pc{ver};
+  $pc{ver} = $main::ver;
   return %pc;
 }
 

@@ -29,6 +29,7 @@ var output = output || {};
 // VentanglePC専用のユドナリウムXML生成処理
 output.generateUdonariumXmlDetailOfVentanglePC = (json, opt_url, defaultPalette, resources)=>{
   const dataDetails = {'リソース':resources};
+  let addedParam = {};
   
   // ----------------------------------------
   // 1. 情報タブ

@@ -49,10 +49,11 @@ body:not([data-create-type="F"]) .fullscratch-only {
   display: grid;
   grid-gap: var(--box-v-gap) var(--box-h-gap);
   
-  grid-template-columns: 1.25fr 0.55fr 1.1fr 2.115fr;
-  grid-template-rows: auto auto auto auto;
+  /* 変更点：minmax(0, Xfr) を使って、inputのデフォルト幅による拡張を強制ストップさせる */
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.55fr) minmax(0, 1.1fr) minmax(0, 2.115fr);
+  grid-template-rows: auto auto auto auto auto;
   
-  /* ★ STT-EBS を STT(初期値) と EBS(永続BS) に分割してはめ込みます */
+  /* 編集画面のHTML構造に合わせたエリア指定（ユーザー様の記述を復元） */
   grid-template-areas:
     "PE1 PE2 PE3 IMG"
     "STT STT EBS IMG"
@@ -88,9 +89,19 @@ body:not([data-create-type="F"]) .fullscratch-only {
 #permanent-bs          { grid-area: EBS; }
 #origin-adept-section  { grid-area: OAF; }
 #lifestyle             { grid-area: LST; }
-  #body-arrange          { grid-area: BDY; }
-/* #stt-ebs-container は不要になったため削除しました */
+#body-arrange          { grid-area: BDY; }
 
+/* ★ 入力欄のデフォルト幅を無効化し、親の枠内に確実に収める */
+:is(#personal, #personal2, #personal3) dl dd input {
+
+  min-width: 0;
+  box-sizing: border-box;
+  
+  /* 中央に配置してバランスを取る */
+  display: block;
+  margin: 2px; 
+  padding: 2px;
+}
 
 /* ---------------------------------------------------------------------------------------------------- */
 /* ⑰⑱ 初期数値 ＆ 永続BS の設定（幅潰れ強制上書き版）
@@ -549,7 +560,7 @@ table.custom-table .cat-wrapper { display: none !important; }
   white-space: nowrap;
 }
 .cat-wrapper input {
-  width: 10em !important; /* 取得元・カテゴリの幅を固定 */
+  width: 5em !important; /* 取得元・カテゴリの幅を固定 */
 }
 
 /* パワー・ウェア・アイテム（可視要素が3つのグループ） */
@@ -953,6 +964,9 @@ body:not(.mode-crc) .crc-only {
   grid-template-columns: 1fr 1fr 1fr 1fr;
   > dt {
     display: none;
+  }  
+  >dd {
+    align-content: start;
   }
   > dd:not(:last-child) {
     border-right-width: 1px;

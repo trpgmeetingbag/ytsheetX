@@ -1,19 +1,162 @@
-// 開閉系 ----------------------------------------
-function popImage(id) {
+// 画像 ----------------------------------------
+// 全体表示
+async function popImage(id = 1) {
+  let imageBox = document.getElementById("image-box") || null;
+  if(!imageBox){
+    imageBox = document.createElement('div');
+    imageBox.id = 'image-box';
+    imageBox.addEventListener('click', () => { closeImage() });
+    let imageSrc = document.createElement('img');
+    imageSrc.id = "image-box-image";
+    imageBox.append(imageSrc);
+    document.body.append(imageBox);
+    await new Promise((r) => setTimeout(r, 1));
+  }
   if(typeof images !== 'undefined'){
-    id ||= 1;
     document.getElementById('image-box-image').src = images[id];
   }
-  document.getElementById("image-box").style.bottom = 0;
-  document.getElementById("image-box").style.opacity = 1;
-
+  imageBox.style.bottom = 0;
+  imageBox.style.opacity = 1;
 }
 function closeImage() {
-  document.getElementById("image-box").style.opacity = 0;
+  let imageBox = document.getElementById("image-box");
+  imageBox.style.opacity = 0;
   setTimeout(function(){
-    document.getElementById("image-box").style.bottom = '-100vh';
+    imageBox.style.bottom = '-100vh';
   },200);
 }
+// Prev/Nextボタン・スポイラー表示ボタン
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(imageLayouts && Object.keys(imageLayouts).length > 1){
+    let prev = document.createElement('span');
+    prev.classList.add('prev-button');
+    prev.addEventListener('click', () => { changeImage(-1) });
+    let next = document.createElement('span');
+    next.classList.add('next-button');
+    next.addEventListener('click', () => { changeImage(1) });
+    document.getElementById('image').append(prev, next);
+  }
+  if(imageLayouts && Object.keys(imageLayouts).length > 0){
+    Object.keys(imageLayouts).forEach(id => {
+      if(imageLayouts[id].spoiler){
+        if((hasDeclaredAdultAge == 1 && (
+            (imageLayouts[id].spoiler == 'R-18'  && alwaysShowSpoilers['R-18']  == 1) ||
+            (imageLayouts[id].spoiler == 'R-18G' && alwaysShowSpoilers['R-18G'] == 1)
+          )) ||
+          (imageLayouts[id].spoiler == 'sensitive' && alwaysShowSpoilers.sensitive == 1)
+        ) {
+          delete imageLayouts[id].spoiler;
+        }
+      }
+    });
+    const selectedLayout = imageLayouts[selectedImage] || {};
+    const currentImage = document.querySelector('.image.current');
+    if(selectedLayout.spoiler){
+      currentImage?.append(createRemoveSpoilerButton(selectedImage, selectedLayout.spoiler));
+    }
+    else if(currentImage){
+      delete currentImage.dataset.spoiler;
+    }
+  }
+  // パートナー画像
+  document.querySelectorAll(`.partner .image`).forEach(obj => {
+    const spoiler = obj.dataset.spoiler || '';
+    if((hasDeclaredAdultAge == 1 && (
+        (spoiler == 'R-18'  && alwaysShowSpoilers['R-18']  == 1) ||
+        (spoiler == 'R-18G' && alwaysShowSpoilers['R-18G'] == 1)
+      )) ||
+      (spoiler == 'sensitive' && alwaysShowSpoilers.sensitive == 1)
+    ) {
+      delete obj.dataset.spoiler;
+    }
+    else if(spoiler){
+      obj.append(createRemoveSpoilerButton('', spoiler));
+    }
+  });
+});
+// スポイラー警告および表示ボタン生成
+function createRemoveSpoilerButton(id, type = imageLayouts[id].spoiler) {
+  let notes = document.createElement('div');
+  notes.classList.add('spoiler-notes');
+  if(type == 'R-18'     ){ notes.innerHTML = "<p>画像はR-18（成人向け／性的表現を含む）として設定されています。</p>" }
+  if(type == 'R-18G'    ){ notes.innerHTML = "<p>画像はR-18G（成人向け／グロテスク表現を含む）として設定されています。</p>" }
+  if(type == 'sensitive'){ notes.innerHTML = "<p>画像はセンシティブな内容を含むものとして設定されています。</p>" }
+  if(type == 'spoiler'  ){ notes.innerHTML = "<p>画像はネタバレのおそれのあるものとして設定されています。</p>" }
+
+  if(hasDeclaredAdultAge == 1 || (type && !/R-18/.test(type)) || downloadMode){
+    if(downloadMode && /R-18/.test(type)){
+      notes.innerHTML += `<small>18歳未満のユーザーは閲覧しないでください。</small>`;
+    }
+    let button = document.createElement('span');
+    button.textContent = "表示";
+    button.classList.add('remove-spoiler-button');
+    button.addEventListener('click', (e) => { 
+      delete notes.parentNode.dataset.spoiler;
+      if(id){ delete imageLayouts[id].spoiler; }
+      notes.remove();
+    });
+    notes.append(button);
+  }
+  else {
+    notes.innerHTML += `<small>18歳未満のユーザーには表示できません。</small>`;
+    if(id) {
+      notes.innerHTML += `<small>あなたが18歳以上である場合は、<a href="./?mode=option">閲覧設定</a>で設定してください。</small>`;
+    }
+  }
+  return notes;
+}
+// 画像変更
+function changeImage(direction = 0){
+  const selected = getImageId(direction);
+
+  if(images.hasOwnProperty(selected)){
+    selectedImage = selected;
+    
+    const imageArea = document.querySelector('#image');
+    let next = document.createElement('div');
+    next.classList.add('image','next');
+    next.style.backgroundImage    = `url(${images[selected]})`;
+    next.style.backgroundSize     = imageLayouts[selected].fit;
+    next.style.backgroundPosition = `${imageLayouts[selected].X} ${imageLayouts[selected].Y}`;
+    next.innerHTML = `
+      <div onclick="popImage('${selected}')">
+        <p class="words" style="${imageLayouts[selected].wordsPosition}">${imageLayouts[selected].words}</p>
+      </div>
+      <p class="image-copyright">${imageLayouts[selected].copyright}</p>`;
+    if(imageLayouts[selected].spoiler){
+      next.dataset.spoiler = imageLayouts[selected].spoiler;
+      next.append(createRemoveSpoilerButton(selectedImage));
+    }
+    next.addEventListener('transitionend', () => {
+      next.classList.replace('next','current');
+    });
+    const img = new Image();
+    img.src = images[selected];
+    img.addEventListener('load', () => {
+      document.querySelectorAll('#image .image').forEach(el => {
+        el.addEventListener('transitionend', () => {
+          el.remove();
+        });
+        el.style.opacity = 0;
+      });
+      imageArea.prepend(next);
+    });
+
+  }
+}
+function getImageId(direction = 0) {
+  const ids =
+    Object.keys(images)
+    .filter(key => /^[0-9]+$/.test(key))
+    .map(Number)
+    .sort((a, b) => a - b);
+  const index = ids.indexOf(Number(selectedImage));
+
+  if (index === -1) return selectedImage;
+
+  return ids[(index + direction + ids.length) % ids.length];
+}
+// 開閉系 ----------------------------------------
 function closeTextareaForCopy() {
   document.getElementById('copyText-box').remove();
   document.getElementById('copyText-box-textarea').remove();
@@ -62,6 +205,59 @@ function chatPaletteSelect(tool) {
   });
   document.getElementById('cp-switch-'+(tool||'ytc')).classList.add('check');
 }
+// セッション履歴開閉 ----------------------------------------
+let historyView = true;
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(document.querySelector("#history tbody:nth-of-type(9)")){
+    historyView = false,
+    switchHistoryClose();
+  document.querySelector('#history .open-button').dataset.open = '';
+  }
+});
+function switchHistoryView(){
+  historyView = !historyView;
+  historyView ? switchHistoryOpen() : switchHistoryClose();
+  document.querySelector('#history .open-button').dataset.open = historyView ? 'true' : '';
+}
+function switchHistoryOpen(){
+  const table = document.querySelector('#history > table');
+  // 表示
+  table.querySelectorAll('tbody').forEach(row => {
+    row.style.display = "";
+  });
+  // 省略業を削除
+  document.getElementById('collapsed-history-row').remove();
+}
+function switchHistoryClose(){
+  const table = document.querySelector('#history > table');
+  rows = table.querySelectorAll('tbody:not(:nth-of-type(-n+1)):not(:nth-last-of-type(-n+5))');
+  // 最下部以外を非表示
+  rows.forEach(row => {
+    row.style.display = "none";
+  });
+  // 省略行を生成
+  const theadRow = table.querySelector("thead tr");
+  colLength = theadRow.children.length
+  const newTbody = document.createElement("tbody");
+  newTbody.id = "collapsed-history-row";
+  const newCell = document.createElement("td");
+  newCell.colSpan = colLength;
+  newCell.innerText = "︙\n省略されたセッション履歴\n︙";
+  newTbody.appendChild(newCell);
+  if (rows.length < 1) {
+    table.appendChild(newTbody);
+  } else {
+    table.insertBefore(newTbody, rows[0]);
+  }
+}
+
+// 収支履歴開閉 ----------------------------------------
+let cashbookView = false;
+function switchCashbookView(num = ""){
+  cashbookView = !cashbookView;
+  document.getElementById('cashbook'+num).dataset.open = cashbookView ? 'true' : '';
+  document.querySelector(`#cashbook${num} .open-button`).dataset.open = cashbookView ? 'true' : '';
+}
 
 // スクロール位置 ----------------------------------------
 window.addEventListener('DOMContentLoaded', ()=>{
@@ -77,7 +273,6 @@ window.addEventListener('DOMContentLoaded', ()=>{
 window.addEventListener('load', ()=>{
   if (rubyCopyMode == 0){
     document.querySelectorAll('ruby:has(rp:nth-of-type(3):last-child)').forEach(ruby => {
-      console.log(ruby)
       ruby.querySelector('ruby rp:nth-of-type(1)').textContent = '';
       ruby.querySelector('ruby rp:nth-of-type(2)').textContent = '(';
       ruby.querySelector('ruby rp:nth-of-type(3)').textContent = ')';
@@ -85,186 +280,19 @@ window.addEventListener('load', ()=>{
   }
 });
 
-// 保存系 ----------------------------------------
-function getJsonData(targetEnvironment = '') {
-  const paramId = /id=[0-9a-zA-Z\-]+/.exec(location.href)[0];
-  return new Promise((resolve, reject)=>{
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', `./?${paramId}&mode=json&target=${targetEnvironment}`, true);
-    xhr.responseType = "json";
-    xhr.onload = (e) => {
-      resolve(e.currentTarget.response);
-    };
-    xhr.onerror = () => reject('error');
-    xhr.onabort = () => reject('abort');
-    xhr.ontimeout = () => reject('timeout');
-    xhr.send();
-  });
-}
+// シングルカラムモード ----------------------------------------
+if(localStorage.getItem("singleColumnMode") == 1){
+  const observer = new MutationObserver((mutations, observer) => {
+    const targetElement = document.body;
 
-function generateUdonariumZipFile(title, data, image){
-  return new Promise((resolve, dummy)=>{
-    let zip = new JSZip();
-    let folder = zip.folder(title);
-    if(image.hash) {
-      folder.file(image.fileName, image.data);
+    if (targetElement) {
+      document.body.classList.remove('wide');
+      observer.disconnect();
     }
-    folder.file(`${title}.xml`, data, {binary: false});
-    zip.generateAsync({ type: "blob" }).then(blob => {
-      const dataUrl = URL.createObjectURL(blob);
-      resolve(dataUrl);
-    });
   });
-}
 
-function downloadFile(title, url) {
-  const a = document.createElement("a");
-  document.body.appendChild(a);
-  a.download = title;
-  a.href = url;
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function copyToClipboard(text) {
-  // navigator.clipboard.writeText(text); は許可されていなければ動作せず、
-  // 非 SSL で繋いでいる場合は許可することすらできないので利用できない。
-  const textarea = document.createElement('textarea');
-  document.getElementById('downloadlist').appendChild(textarea);
-  textarea.value = text;
-  textarea.focus();
-  textarea.setSelectionRange(0, textarea.value.length);
-  const isCopied = document.execCommand('copy');
-  textarea.remove();
-  if (isCopied) {
-    return;
-  } else{
-    throw 'クリップボードへのコピーに失敗しました';
-  }
-}
-
-async function downloadAsUdonarium() {
-  const characterDataJson = await getJsonData('udonarium');
-  const characterId = characterDataJson.characterName || characterDataJson.monsterName || characterDataJson.aka || '無題';
-  const image = await output.getPicture(characterDataJson.imageURL || defaultImage, "image."+characterDataJson.image);
-  const udonariumXml = output.generateUdonariumXml(generateType, characterDataJson, location.href, image.hash);
-  const udonariumUrl = await generateUdonariumZipFile((characterDataJson.characterName||characterDataJson.aka), udonariumXml, image);
-  downloadFile(`udonarium_data_${characterId}.zip`, udonariumUrl);
-}
-
-function getCcfoliaJson() {
-  return new Promise((resolve, reject)=>{
-    getJsonData('ccfolia').then((characterDataJson)=>{
-      output.generateCcfoliaJson(generateType,characterDataJson, location.href).then(resolve, reject);
-    }, reject);
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true
   });
-}
-
-function getClipboardItem() {
-  try {
-    return new ClipboardItem({
-      'text/plain': getCcfoliaJson().then((json)=>{
-        return new Promise(async (resolve)=>{
-          resolve(new Blob([json]));
-        });
-      }, (err)=>{
-        console.error(err);
-        alert('キャラクターシートのデータ取得に失敗しました。通信状況等をご確認ください');
-      })
-    });
-  } catch(e) { // FireFox は ClipboardItem が使えない（2022/07/16 v.102.0.1）
-    return {
-      getType: ()=>{
-        return new Promise((resolve, reject)=>{
-          getCcfoliaJson().then((json)=>{
-            resolve(new Blob([json]));
-          });
-        }, (err)=>{
-          console.error(err);
-          alert('キャラクターシートのデータ取得に失敗しました。通信状況等をご確認ください');
-        });
-      }
-    };
-  }
-}
-
-function clipboardItemToTextareaClipboard(clipboardItem) {
-  clipboardItem.getType('text/plain').then((blob)=>{
-    blob.text().then((jsonText)=>{
-      try {
-        copyToClipboard(jsonText);
-        alert('クリップボードにコピーしました。ココフォリアにペーストすることでデータを取り込めます');
-      } catch (e) {
-        popTextareaForCopy(jsonText);
-      }
-    });
-  });
-}
-
-async function downloadAsCcfolia() {
-  const clipboardItem = getClipboardItem();
-  if(navigator.clipboard && navigator.clipboard.write) { // FireFox は navigator.clipboard.write が使えない（2022/07/16 v.102.0.1）
-    navigator.clipboard.write([clipboardItem]).then((ok)=>{
-      alert('クリップボードにコピーしました。ココフォリアにペーストすることでデータを取り込めます');
-    }, (err)=>{
-      clipboardItemToTextareaClipboard(clipboardItem);
-    });
-  } else {
-    clipboardItemToTextareaClipboard(clipboardItem);
-  }  
-}
-
-async function downloadAsText() {
-  const characterDataJson = await getJsonData();
-  const name = document.title.replace(/ - .+?$/,'') || '無題';
-  const textData = output[`generateCharacterTextOf${generateType}`](characterDataJson);
-  const textUrl = window.URL.createObjectURL(new Blob([ textData ], { "type" : 'text/plain;charset=utf-8;' }));
-  downloadFile(`${name}.txt`, textUrl);
-}
-
-async function downloadAsJson() {
-  const characterDataJson = await getJsonData();
-  const name = document.title.replace(/ - .+?$/,'') || '無題';
-  const jsonUrl = window.URL.createObjectURL(new Blob([ JSON.stringify(characterDataJson) ], { "type" : 'text/json;charset=utf-8;' }));
-  downloadFile(`${name}.json`, jsonUrl);
-}
-async function downloadAsHtml(){
-  const name = document.title.replace(/ - .+?$/,'') || '無題';
-  const url = location.href.replace(/#(.+)$/,'').replace(/&mode=(.+?)(&|$)/,'')+'&mode=download';
-  downloadFile(name+'.html', url);
-}
-async function downloadAsFullSet(){
-  const name = document.title.replace(/ - .+?$/,'') || '無題';
-  const url = location.href.replace(/#(.+)$/,'').replace(/&mode=(.+?)(&|$)/,'');
-  let zip = new JSZip();
-  zip.file(name+'.html', await JSZipUtils.getBinaryContent(url+'&mode=download'));
-  zip.file(name+'.json', await JSZipUtils.getBinaryContent(url+'&mode=json'));
-  if(document.getElementById('chatPaletteBox')) zip.file(name+'_チャットパレット.txt', await JSZipUtils.getBinaryContent(url+'&mode=palette'));
-  
-  // ユドナリウム
-  if(document.getElementById('downloadlist-udonarium')){
-    const characterDataJson = await getJsonData('udonarium');
-    const image = await output.getPicture(characterDataJson.imageURL || defaultImage, "image."+characterDataJson.image);
-    const udonariumXml = output[`generateUdonariumXml`](generateType,characterDataJson, location.href, image.hash);
-    const udonariumUrl = await generateUdonariumZipFile((characterDataJson.characterName||characterDataJson.aka), udonariumXml, image);
-    zip.file(name+'_udonarium.zip', await JSZipUtils.getBinaryContent(udonariumUrl));
-  }
-  // ココフォリア
-  if(document.getElementById('downloadlist-ccfolia')){
-    zip.file(name+'_ccfolia.txt', await getCcfoliaJson());
-  }
-
-  // ダウンロード
-  zip.generateAsync({type:"blob"})
-    .then(function(content) {
-      const url = URL.createObjectURL(content);
-      const a = document.createElement("a");
-      document.body.appendChild(a);
-      a.download = name+'.zip';
-      a.href = url;
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
 }

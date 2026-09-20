@@ -3,42 +3,26 @@ use strict;
 #use warnings;
 use utf8;
 
-require $set::data_races;
-require $set::data_class;
+require $set::data_class_mgr;
 
-sub data_calc {
+sub dataCalc {
   my %pc = %{$_[0]};
   my %st;
+  
   ### アップデート --------------------------------------------------
   if($pc{ver}){
-    %pc = data_update_chara(\%pc);
+    %pc = upgradeCharaData(\%pc);
   }
-  
 
-  ### 経験点／ゴールド計算 --------------------------------------------------
+  ### 経験点計算 --------------------------------------------------
   ## 履歴から 
-  $pc{moneyTotal}   = 0;
-  #$pc{depositTotal} = 0;
-  #$pc{debtTotal}    = 0;
-  $pc{payment}    = 0;
-  $pc{expTotal}   = s_eval($pc{history0Exp});
-  $pc{moneyTotal} = s_eval($pc{history0Money});
+  $pc{expTotal} = s_eval($pc{history0Exp});
   foreach my $i (1 .. $pc{historyNum}){
     if($pc{"history${i}Check"}) {
       $pc{expTotal} += s_eval($pc{"history${i}Exp"});
     }
-    $pc{payment}    += s_eval($pc{"history${i}Payment"});
-    $pc{moneyTotal} += s_eval($pc{"history${i}Money"});
   }
-  $pc{expTotal} -= $pc{payment};
   $pc{historyExpTotal} = $pc{expTotal};
-  $pc{historyMoneyTotal} = $pc{moneyTotal};
-  ## 収支履歴計算
-  my $cashbook = $pc{cashbook};
-  $cashbook =~ s/::((?:[\+\-\*\/]?[0-9]+)+)/$pc{moneyTotal} += eval($1)/eg;
-  #$cashbook =~ s/:>((?:[\+\-\*\/]?[0-9]+)+)/$pc{depositTotal} += eval($1)/eg;
-  #$cashbook =~ s/:<((?:[\+\-\*\/]?[0-9]+)+)/$pc{debtTotal} += eval($1)/eg;
-  #$pc{moneyTotal} += $pc{debtTotal} - $pc{depositTotal};
 
   ## スキルレベル
   $pc{skillLvTotal} = $pc{skillLvGeneral} = 0;
@@ -46,9 +30,7 @@ sub data_calc {
 
   $pc{skillLvLimitAdd} = !$pc{skillLvLimitAdd} ? '' : $pc{skillLvLimitAdd} > 0 ? "+$pc{skillLvLimitAdd}" : $pc{skillLvLimitAdd};
 
-
-
-## 成長点消費（MGR仕様フロントエンド連携）
+  ## 成長点消費（MGR仕様フロントエンド連携）
   # 編集画面から送られてきた各消費項目を単純に合計し、残りを算出する
   $pc{expUsed} = ($pc{expUsedLevel} || 0)
                + ($pc{expUsedGeneralSkills} || 0)
@@ -56,10 +38,8 @@ sub data_calc {
                + ($pc{expUsedJoubika} || 0)
                + ($pc{expUsedStt} || 0);
   $pc{expRest} = $pc{expTotal} - $pc{expUsed};
-  
 
-
-### クラス・能力値（MGR仕様） --------------------------------------------------
+  ### クラス・能力値（MGR仕様） --------------------------------------------------
   # キャラクター一覧（index）の表示用に、代表クラスを抽出してセットします
   $pc{classMain}    = $pc{"class1Name"} || '';
   $pc{classSupport} = $pc{"class2Name"} || '';
@@ -70,13 +50,6 @@ sub data_calc {
   foreach my $i (1 .. $pc{classesNum}){
     $pc{level} += $pc{"class${i}Lv"} || 0;
   }
-
-  # ※MGRの能力値は全てフロントエンド（JS）で緻密に計算・出力されており、
-  # formから送信された値をそのままデータベースに保存するため、
-  # ここにあったAR2E用の能力値・HP・フェイト等の再計算ロジックは全て削除しました。
-
-
- 
 
   ### グレード自動変更 --------------------------------------------------
   if (@set::grades){
@@ -92,41 +65,26 @@ sub data_calc {
   }
 
   ### 0を消去 --------------------------------------------------
-  foreach my $s ('Str','Dex','Agi','Int','Sen','Mnd','Luk'){
-    foreach my $type ('Make','BaseAdd','Main','Support','Add'){
-      delete $pc{'stt'.$s.$type} if !$pc{'stt'.$s.$type};
-    }
-    delete $pc{'roll'.$s.'Add'} if !$pc{'roll'.$s.'Add'};
+  foreach my $s ('Tai','Han','Chi','Ri','Ishi','Kou'){
+    delete $pc{'sttPoint'.$s}    if !$pc{'sttPoint'.$s};
+    delete $pc{'sttGrow'.$s}     if !$pc{'sttGrow'.$s};
+    delete $pc{'sttSkill'.$s}    if !$pc{'sttSkill'.$s};
+    delete $pc{'sttOther'.$s}    if !$pc{'sttOther'.$s};
+    delete $pc{'sttBonusAdd'.$s} if !$pc{'sttBonusAdd'.$s};
   }
+
   #### 改行を<br>に変換 --------------------------------------------------
-  foreach (
-    'words',
-    'items',
-    'freeNote',
-    'freeHistory',
-    'cashbook',
-    'chatPalette',
-    'armamentHandRNote',
-    'armamentHandLNote',
-    'armamentHeadNote',
-    'armamentBodyNote',
-    'armamentSubNote',
-    'armamentOtherNote',
-    'armamentTotalNote',
-    'battleSkillNote',
-    'battleOtherNote',
-  ){
-    $pc{$_} =~ s/\r\n?|\n/<br>/g;
-  }
-  foreach my $i (1 .. $pc{geisesNum}){
-    $pc{"geis${i}Note"} =~ s/\r\n?|\n/<br>/g;
-  }
+#### 改行を<br>に変換 --------------------------------------------------
+  convertNewlinesToBrTag(\%pc,
+    qw/freeNote freeHistory chatPalette/,
+    ( map { 'words'.$_ } '', 2 .. ($set::image_maxcount || 1) ),
+  );
   
   #### 保存処理でなければここまで --------------------------------------------------
   if(!$::mode_save){ return %pc; }
 
   #### エスケープ --------------------------------------------------
-  $pc{$_} = pcEscape($pc{$_}) foreach (keys %pc);
+  $pc{$_} = escapePcData($pc{$_}) foreach (keys %pc);
   $pc{tags} = normalizeHashtags($pc{tags});
   
   ### 最終参加卓 --------------------------------------------------
@@ -134,31 +92,53 @@ sub data_calc {
     if($pc{"history${i}Gm"} && $pc{"history${i}Title"}){ $pc{lastSession} = removeTags unescapeTags $pc{"history${i}Title"}; last; }
   }
 
-  ### newline --------------------------------------------------
-### newline --------------------------------------------------
-  my $charactername = ($pc{aka} ? "“$pc{aka}”" : "").$pc{characterName};
-  $charactername =~ s/[|｜]([^|｜]+?)《.+?》/$1/g;
+  ### updatedLine --------------------------------------------------
+  my %NL;
+  $NL{name}  = ($pc{aka} ? "“$pc{aka}”" : "").$pc{characterName};
+  $NL{$_} = $pc{$_} foreach ('playerName','cover','gender','age','mechaName');
+  foreach (keys %NL){
+    $NL{$_} =~ s/[|｜]([^|｜]+?)《.+?》/$1/g;
+    $NL{$_} = removeTags unescapeTags $NL{$_} =~ s/^\s|\s$//gr;
+  }
   
-  # ▼ エラーの原因解決：クラスを「/」区切りで繋げた文字列（$classes）を生成する
+  if(length($NL{name}) > 108){
+    if($NL{name} =~ s/“.+”//r){ $NL{name} =~ s/“.+”// }
+    if(length($NL{name}) > 108){
+      $NL{name} = substr($NL{name}, 0, 108).'..' if length($NL{name}) > 108;
+    }
+  }
+  $NL{playerName} = substr($NL{playerName}, 0, 25).'..' if length($NL{playerName}) > 25;
+  $NL{cover}      = substr($NL{cover}     , 0, 20).'..' if length($NL{cover}     ) > 20;
+  $NL{gender}     = substr($NL{gender}    , 0, 20).'..' if length($NL{gender}    ) > 20;
+  $NL{age}        = substr($NL{age}       , 0, 20).'..' if length($NL{age}       ) > 20;
+  $NL{mechaName}  = substr($NL{mechaName} , 0, 30).'..' if length($NL{mechaName} ) > 30;
+
+  # ▼ システム名を一覧画面(list-chara)に送るための準備
+  $NL{srsSystem} = $pc{srsSystem} || 'メタリックガーディアンRPG';
+  $NL{srsSystem} =~ s/[|｜]([^|｜]+?)《.+?》/$1/g;
+  $NL{srsSystem} = removeTags unescapeTags $NL{srsSystem} =~ s/^\s|\s$//gr;
+  $NL{srsSystem} = substr($NL{srsSystem}, 0, 30).'..' if length($NL{srsSystem}) > 30;
+
   my @class_list;
   foreach my $i (1 .. ($pc{classesNum} || 1)) {
     push(@class_list, $pc{"class${i}Name"}) if $pc{"class${i}Name"};
   }
-  my $classes = join('/', @class_list);
-  # ▲ ここまで ▲
+  $NL{classes} = join('/', @class_list);
+  $NL{classes} =~ s/[|｜]([^|｜]+?)《.+?》/$1/g;
+  $NL{classes} = removeTags unescapeTags $NL{classes} =~ s/^\s|\s$//gr;
+  $NL{classes} = substr($NL{classes}, 0, 40).'..' if length($NL{classes}) > 40;
 
   $pc{lastSession} = removeTags unescapeTags $pc{lastSession};
 
-  # ▼ 保存用の1行データを生成（番目がズレないように空の <> を補填しています）
-  $::newline = "$pc{id}<>$::file<>".
-               "$pc{birthTime}<>$::now<>$charactername<>$pc{playerName}<>$pc{group}<>".
-               "$pc{image}<> $pc{tags} <>$pc{hide}<>".
-               "$pc{cover}<>$pc{gender}<>$pc{age}<>".
-               "$pc{expTotal}<>$pc{level}<>$classes<>$pc{mechaName}<><><><>".
-               "$pc{lastSession}<>";
+  $::updatedLine =
+    "$pc{id}<>$::file<>"
+    . "$pc{birthTime}<>$::now<>$NL{name}<>$NL{playerName}<>$pc{group}<>"
+    . setUpdatatLineImage(\%pc)."<> $pc{tags} <>$pc{hide}<>"
+    . "$NL{cover}<>$NL{gender}<>$NL{age}<>"
+    . "$pc{expTotal}<>$pc{level}<>$NL{classes}<>$NL{mechaName}<>$NL{srsSystem}<><><>"
+    . "$pc{lastSession}<>";
 
   return %pc;
 }
-
 
 1;

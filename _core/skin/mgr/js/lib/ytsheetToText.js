@@ -171,7 +171,7 @@ output._getMgrItems = (json) => {
 };
 
 // メイン出力関数
-output.generateCharacterTextOfArianrhod2PC = (json) => {
+output.generateCharacterTextOfSRSPC = (json) => {
   const result = [];
 
   // 1. 基本情報
@@ -286,4 +286,195 @@ output.generateCharacterTextOfArianrhod2PC = (json) => {
   result.push((json.freeNote || '').replace(/&lt;br&gt;|<br>/gm, '\n').replace(/&quot;/gm, '"'));
   
   return result.join('\n');
+};
+
+// ==========================================
+// ★新規追加：エネミー（魔物）用のテキスト出力処理
+// ==========================================
+output.generateCharacterTextOfSRSEnemy = (json) => {
+  const result = [];
+
+  // --- 文字の表示幅（全角2、半角1）を取得・整形する関数 ---
+  const getLen = (str) => {
+    let len = 0;
+    for (let i = 0; i < (str || '').length; i++) {
+      len += str[i].match(/[ -~]/) ? 1 : 2;
+    }
+    return len;
+  };
+  const padRight = (str, len) => {
+    const clen = getLen(str);
+    if (clen < len) {
+      return str + ' '.repeat(len - clen);
+    }
+    return str;
+  };
+
+  // 1. システム名
+  result.push(`システム名：${json.system || '未定義'}`);
+  result.push('');
+
+  // 2. 名前
+  let titleName = json.monsterName || '';
+  if (json.characterName && json.monsterName) {
+    titleName = `${json.characterName}（${json.monsterName}）`;
+  } else if (json.characterName) {
+    titleName = json.characterName;
+  }
+  result.push(titleName);
+
+  // 3. 種別
+  let taxaText = json.taxa || '';
+  if (json.subTaxa) {
+    taxaText += `（${json.subTaxa}）`;
+  }
+  if (taxaText) {
+    result.push(`種別：${taxaText}`);
+  }
+
+  // 4. 基礎部 (レベル、サイズなど)
+  const baseItems = [];
+  for (let i = 1; i <= (json.baseNum || 15); i++) {
+    const bName = json[`base${i}Name`];
+    const bVal  = json[`base${i}Value`];
+    if (bName && bVal !== '' && bVal != null) {
+      baseItems.push(`${bName}：${bVal}`);
+    }
+  }
+  if (baseItems.length > 0) {
+    result.push(baseItems.join(' '));
+  }
+
+  // 5. 能力値 (3つごとに改行 ＋ 等幅揃え)
+  const sttItems = [];
+  for (let i = 1; i <= (json.sttNum || 15); i++) {
+    const sName = json[`stt${i}Name`];
+    const sVal  = json[`stt${i}Value`];
+    if (sName && sVal !== '' && sVal != null) {
+      let bVal = parseInt(sVal, 10);
+      let bonus = !isNaN(bVal) ? Math.floor(bVal / 3) : 0;
+      let sign = bonus >= 0 ? '＋' : '－';
+      sttItems.push(`${sName}：${sVal}／${sign}${Math.abs(bonus)}`);
+    }
+  }
+  if (sttItems.length > 0) {
+    const cols = 3;
+    const maxLens = [0, 0, 0];
+    for (let i = 0; i < sttItems.length; i++) {
+      let c = i % cols;
+      let len = getLen(sttItems[i]);
+      if (len > maxLens[c]) maxLens[c] = len;
+    }
+    for (let i = 0; i < sttItems.length; i += cols) {
+      let row = [];
+      for (let c = 0; c < cols; c++) {
+        if (i + c < sttItems.length) {
+          if (c === cols - 1 || i + c === sttItems.length - 1) {
+            row.push(sttItems[i + c]);
+          } else {
+            row.push(padRight(sttItems[i + c], maxLens[c]));
+          }
+        }
+      }
+      result.push(row.join('　')); // 列の間は全角スペース
+    }
+  }
+
+  // 6. 戦闘値 (4つごとに改行 ＋ 等幅揃え)
+  const battleItems = [];
+  for (let i = 1; i <= (json.battleNum || 15); i++) {
+    const bName = json[`battle${i}Name`];
+    const bVal  = json[`battle${i}Value`];
+    if (bName && bVal !== '' && bVal != null) {
+      battleItems.push(`${bName}：${bVal}`);
+    }
+  }
+  if (battleItems.length > 0) {
+    const cols = 4;
+    const maxLens = [0, 0, 0, 0];
+    for (let i = 0; i < battleItems.length; i++) {
+      let c = i % cols;
+      let len = getLen(battleItems[i]);
+      if (len > maxLens[c]) maxLens[c] = len;
+    }
+    for (let i = 0; i < battleItems.length; i += cols) {
+      let row = [];
+      for (let c = 0; c < cols; c++) {
+        if (i + c < battleItems.length) {
+          if (c === cols - 1 || i + c === battleItems.length - 1) {
+            row.push(battleItems[i + c]);
+          } else {
+            row.push(padRight(battleItems[i + c], maxLens[c]));
+          }
+        }
+      }
+      result.push(row.join('　　'));
+    }
+  }
+
+  // 7. 防御修正
+  const defItems = [];
+  for (let i = 1; i <= (json.defenseNum || 15); i++) {
+    const dName = json[`defense${i}Name`];
+    const dVal  = json[`defense${i}Value`];
+    if (dName && dVal !== '' && dVal != null) {
+      defItems.push(`${dName}${dVal}`);
+    }
+  }
+  if (defItems.length > 0) {
+    result.push(`防御修正：${defItems.join('／')}`);
+  }
+  
+  result.push('');
+
+  // 8. 攻撃方法 (一番左に名称、右に[見出し：内容])
+  let hasAttack = false;
+  for (let r = 1; r <= (json.attackRowNum || 15); r++) {
+    const atkName = json[`attackRow${r}Col1Value`];
+    if (!atkName) continue;
+    
+    let parts = [atkName];
+    for (let c = 2; c <= (json.attackColNum || 15); c++) {
+      const header = json[`attackCol${c}Name`];
+      const val = json[`attackRow${r}Col${c}Value`];
+      if (header && val !== '' && val != null) {
+        parts.push(`${header}：${val}`);
+      }
+    }
+    result.push(parts.join('　'));
+    hasAttack = true;
+  }
+  if (hasAttack) result.push('');
+
+  // 9. 特技 (テキストをそのまま出力)
+  if (json.skills) {
+    result.push('特技');
+    result.push(json.skills.replace(/&lt;br&gt;/gi, '\n').replace(/<br\s*\/?>/gi, '\n'));
+    result.push('');
+  }
+
+  // 10. extraarea (加護など)
+  let extraCount = Number(json.extraNum) || 0;
+  if (!extraCount) {
+    let i = 1;
+    while (json[`extra${i}Name`] || json[`extra${i}Text`]) { extraCount = i; i++; }
+  }
+  for (let i = 1; i <= extraCount; i++) {
+    const eName = json[`extra${i}Name`] || '追加項目';
+    const eText = json[`extra${i}Text`];
+    if (eText) {
+      result.push(eName);
+      result.push(eText.replace(/&lt;br&gt;/gi, '\n').replace(/<br\s*\/?>/gi, '\n'));
+      result.push('');
+    }
+  }
+
+  // 11. 解説
+  if (json.description) {
+    result.push('解説');
+    result.push(json.description.replace(/&lt;br&gt;/gi, '\n').replace(/<br\s*\/?>/gi, '\n'));
+  }
+
+  // 最後に末尾の不要な改行をトリミングして完了
+  return result.join('\n').trim();
 };

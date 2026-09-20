@@ -3,13 +3,23 @@ use strict;
 #use warnings;
 use utf8;
 use Encode;
+use FindBin;
 
-our $ver = "1.26.100";
+our $ver = "2.00.009";
 
 our %in;
 for (param()){ $in{$_} = param($_); }
 
 my $mode = $in{mode};
+$ENV{HTML_TEMPLATE_ROOT} = $FindBin::Bin;
+
+#if ( $mode eq 'register'
+#  || $mode eq 'option'
+#  || $mode eq 'passchange'
+#  || $mode eq 'reset'
+#){
+#  error('ユーザーID関連機能メンテナンス中：2025// :～');
+#}
 
 if($mode eq 'register'){
   if($in{id})    { require $set::lib_register; }    #登録処理
@@ -23,7 +33,7 @@ elsif($mode eq 'passchange'){
   require $set::lib_register;    #パスワード変更処理
 }
 elsif($mode eq 'login')   {
-  if($in{id}) { &log_in($in{id},$in{password}); }  #ログイン
+  if($in{id}) { &logIn($in{id},$in{password}); }  #ログイン
   else        { require $set::lib_form; }          #ログインフォーム
 }
 elsif($mode eq 'reminder')   {
@@ -39,12 +49,16 @@ elsif($mode eq 'making')   {
   if($in{make})     { require $set::lib_making; }  #キャラクター作成
   else              { require $set::lib_list_make; }  #キャラクター作成フォーム
 }
-elsif($mode eq 'logout')     { &log_out; }   #ログアウト
+elsif($mode eq 'delete-account')   {
+  require $set::lib_register;
+}
+elsif($mode eq 'logout')     { &logOut; }   #ログアウト
 elsif($mode eq 'option')     { require $set::lib_form; }   #オプション
 elsif($mode eq 'blanksheet') { require $set::lib_edit; }   #ブランクシート
 elsif($mode eq 'edit')       { require $set::lib_edit; }   #編集
 elsif($mode eq 'copy')       { require $set::lib_edit; }   #コピー
 elsif($mode eq 'convert')    { require $set::lib_edit; }   #コンバート編集
+elsif($mode eq 'edit-help')  { require $set::lib_form; }   #編集
 elsif($mode eq 'convertform'){ require $set::lib_form; }   #コンバートフォーム
 elsif($mode eq 'make')       { require $set::lib_save; }   #新規作成
 elsif($mode eq 'save')       { require $set::lib_save; }   #更新
@@ -53,7 +67,8 @@ elsif($mode eq 'delete')     { require $set::lib_delete; } #削除
 elsif($mode eq 'img-delete') { require $set::lib_delete; } #画像削除
 elsif($mode eq 'palette')    { require $set::lib_palette; }#チャットパレット表示
 elsif($mode eq 'js-consts')  { &printJS('consts') }        #JS用定数
-elsif($mode eq 'image')      { &redirectToImage($in{id}); }#画像表示
+elsif($mode eq 'image')      { require $set::lib_others; }#画像表示
+elsif($mode eq 'ogp-image')  { require $set::lib_others; }#画像表示
 elsif(($in{id}||$in{url}) && $mode eq 'json') { require $set::lib_json; }#外部アプリ連携
 elsif($in{id})  { require $set::lib_view; }   #シート表示
 elsif($in{url}) { require $set::lib_view; }   #シート表示（コンバート）

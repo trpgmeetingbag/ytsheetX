@@ -1,9 +1,15 @@
-#!C:/xampp/perl/bin/perl.exe
 #!/usr/bin/perl
+
 ####################################
-##     ゆとシートⅡ for      ##
+##     ゆとシートXX for Ventangle     ##
+##          by TRPG集会所(仮)     ##
+##      https://x.com/nouminhukuro     ##
+####################################
+
+####################################
+##     ゆとシートⅡ for DX3rd     ##
 ##          by ゆとらいず工房     ##
-##    https://yutorize.2-d.jp     ##
+##      https://yutorize.work     ##
 ####################################
 use strict;
 #use warnings;

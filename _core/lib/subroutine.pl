@@ -4,26 +4,96 @@ use utf8;
 use open ":utf8";
 use CGI::Cookie;
 use List::Util qw/max min/;
-use Fcntl;
+use Fcntl qw(:DEFAULT :flock);
+use File::Copy qw/move/;
+use File::Basename qw/dirname/;
+use Encode qw/encode decode/;
+use IO::Compress::Zip;
+use IO::Uncompress::Unzip;
 
 ### サブルーチン #####################################################################################
+our %statusCode = (
+  400 => '400 Bad Request',
+  401 => '401 Unauthorized',
+  404 => '404 Not Found',
+  403 => '403 Forbidden',
+  409 => '409 Conflict',
+  410 => '410 Gone',
+  429 => '429 Too Many Requests',
+  500 => '500 Internal Server Error',
+  502 => '502 Bad Gateway',
+  503 => '503 Service Unavailable',
+);
+
+### 案内画面 --------------------------------------------------
+sub info {
+  our $header = shift;
+  our $message = shift;
+  require $set::lib_info;
+  exit;
+}
+
+### JSON --------------------------------------------------
+sub infoJson {
+  require JSON::PP;
+  our $type = shift;
+  our $message = shift;
+  our $data = shift;
+  $message =~ s/"/\\\"/g;
+  my $code;
+  $message =~ s/^([0-9]{3}):/$code = $1; ''/e;
+  if($code){
+    if($statusCode{$code}){ print "Status: $statusCode{$code}\n"; }
+    else { print "Status: $code\n"; }
+  }
+  print "Content-type: text/javascript; charset=utf-8\n\n";
+  print '{"result":"'.$type.'","message":"'.$message.'","data":'
+    .(defined $data ? JSON::PP->new->canonical(1)->encode( $data ) : 'null')
+    .'}';
+  exit;
+}
+
+### JSファイル --------------------------------------------------
+sub printJS {
+  my $mode = shift;
+  print "Content-type: text/javascript; charset=utf-8\n";
+  print "Cache-Control: public, max-age=604800\n";
+  print "\n";
+  print "// ytsheet JS output mode:$mode \n\n";
+  if($mode eq 'consts' && $set::lib_js_consts){
+    require $set::lib_js_consts;
+  }
+  exit;
+}
+
+### エラー画面 --------------------------------------------------
+sub error {
+  our $message = shift;
+  our $isError = 1;
+  if($::in{mode} =~ /^(?:json|make|save)$/){
+    infoJson('error',$message =~ s/<br>/ /gr);
+  }
+  else {
+    info('エラー',$message);
+  }
+}
 
 ### ファイル名取得／パスorアカウント必要時 --------------------------------------------------
-sub getfile {
+sub authSheet {
   open (my $FH, '<', $set::passfile) or die;
   while (my $line = <$FH>) {
     if(index($line, "$_[0]<") == 0){ #まずID照会
       close($FH);
       my ($id, $pass, $file, $type) = (split /<>/, $line)[0..3];
       if ( (!$pass) # パス不要
-        || (&c_crypt($_[1], $pass)) # パス一致
+        || (&verifyCrypt($_[1], $pass)) # パス一致
         || ($pass eq "[$_[2]]") # 編集権アカウント一致
         || ($set::masterkey && $_[1] eq $set::masterkey) # 管理者パス一致
         || ($set::masterid && $_[2] eq $set::masterid) # 管理者アカウント一致
       ) {
         my $user;
         if($pass =~ /^\[(.+?)\]$/){ $user =$1; }
-        return ($id, $pass, $file, $type, $user);
+        return ($file, $type, $user);
       }
       return 0; #ID一致かつパス不一致
     }
@@ -32,20 +102,67 @@ sub getfile {
   return 0;
 }
 ### ファイル名取得／パスorアカウント不要時 --------------------------------------------------
-sub getfile_open {
+sub findSheet {
   open (my $FH, '<', $set::passfile) or die;
   while (my $line  = <$FH>) {
     if(index($line, "$_[0]<") == 0){
       close($FH);
-      my ($id, $pass, $file, $type) = (split /<>/, $line)[0,1,2,3];
+      my ($id, $pass, $file, $type) = (split /<>/, $line)[0..3];
       my $user;
       if($pass =~ /^\[(.+?)\]$/){ $file = '_'.$1.'/'.$file; $user = $1; }
       else { $file = 'anonymous/'.$file; }
-      return ($file,$type,$user);
+      return ($file, $type, $user);
     }
   }
   close($FH);
   return 0;
+}
+### ファイルロック／更新 --------------------------------------------------
+sub withLock {
+  my ($filePath, $code) = @_;
+
+  sysopen my $LOCK, "$filePath.lock", O_RDWR | O_CREAT
+    or error "500:ロックファイルのオープンに失敗しました。";
+  flock($LOCK, LOCK_EX)
+    or error "500:ファイルのロックに失敗しました。";
+
+  $code->();
+
+  close($LOCK);
+}
+sub overwriteFile {
+  my ($filePath, $code) = @_;
+  withLock($filePath, sub {
+    # 一時ファイル作成
+    my $tmpfile;
+    my $WRITE;
+    while (1) {
+      $tmpfile = dirname($filePath)."/tmp_$::in{mode}$::in{type}_".randomId(16);
+      last if sysopen $WRITE, $tmpfile, O_WRONLY | O_EXCL | O_CREAT;
+    }
+    # ファイル読込
+    sysopen my $READ, $filePath, O_RDONLY | O_CREAT
+      or error "500:ファイルのオープンに失敗しました。//subroutine".__LINE__;
+    # 処理
+    my $returnValue;
+    $returnValue = $code->($READ, $WRITE); # 戻り値はエラーメッセージ
+    close($READ);
+    close($WRITE);
+    if($returnValue =~ /^[0-9]{3}:/){ unlink $tmpfile; error($returnValue); }
+    # 保存（一時ファイルから上書き差替）
+    rename $tmpfile, $filePath;
+  });
+}
+sub appendFile {
+  my ($filePath, $code) = @_;
+  withLock($filePath, sub {
+    # ファイルオープン
+    sysopen my $WRITE, $filePath, O_WRONLY | O_APPEND | O_CREAT
+      or error "500:ファイルのオープンに失敗しました。//subroutine".__LINE__;
+    # 処理
+    $code->($WRITE);
+    close($WRITE);
+  });
 }
 ### typeによって各ファイル・ディレクトリを変更 --------------------------------------------------
 sub changeFileByType {
@@ -70,39 +187,286 @@ sub changeFileByType {
   }
 }
 
-### 画像リダイレクト --------------------------------------------------
-sub redirectToImage {
-  my $id   = shift;
-  my $type = shift;
-  my ($file,$type,$user) = getfile_open($id);
-  changeFileByType($type);
-  my $datadir = $set::char_dir;
-  my $ext;
+### シートアーカイブ --------------------------------------------------
+sub sheetZipPath {
+  my ($dir, $file) = @_;
+  return "${dir}${file}.zip";
+}
+sub sheetLegacyDirPath {
+  my ($dir, $file) = @_;
+  return "${dir}${file}";
+}
+sub sheetFilePath {
+  my ($dir, $file, $name) = @_;
+  return "${dir}${file}/${name}";
+}
+sub sheetFileExists {
+  my ($dir, $file, $name) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  return 1 if zipMemberExists($zipPath, $name);
+  return -f sheetFilePath($dir, $file, $name);
+}
+sub zipMemberExists {
+  my ($zipPath, $member) = @_;
+  return 0 if !-f $zipPath;
 
-  if(!$file){ error("ファイルがありません。") }
-
-  open(my $DATA, "./${datadir}/${file}/data.cgi") or die("file open error: $id:$file,$type // $!");
-  while(<$DATA>){
-    if($_ =~ /^image<>(.*?)\n/){ $ext = $1; last }
+  my $ZIP = IO::Uncompress::Unzip->new($zipPath)
+    or error "500:ZIPファイルのオープンに失敗しました。$IO::Uncompress::Unzip::UnzipError";
+  while (1) {
+    my $header = $ZIP->getHeaderInfo();
+    if($header && $header->{Name} eq $member){
+      close($ZIP);
+      return 1;
+    }
+    last unless $ZIP->nextStream();
   }
-  close($DATA);
+  close($ZIP);
+  return 0;
+}
+sub isSheetBinaryEntry {
+  my $name = shift;
+  return $name =~ /^image[0-9]*\.(?:png|jpe?g|gif|webp)$/i ? 1 : 0;
+}
+sub readZipMember {
+  my ($zipPath, $member, $binary) = @_;
+  return undef if !-f $zipPath;
+  $binary = isSheetBinaryEntry($member) if !defined $binary;
 
-  if(!$ext){ error("画像がありません。") }
+  my $ZIP = IO::Uncompress::Unzip->new($zipPath)
+    or error "500:ZIPファイルのオープンに失敗しました。$IO::Uncompress::Unzip::UnzipError";
+  while (1) {
+    my $header = $ZIP->getHeaderInfo();
+    if($header && $header->{Name} eq $member){
+      my $content = '';
+      my $buffer;
+      while (($ZIP->read($buffer)) > 0) { $content .= $buffer; }
+      close($ZIP);
+      return $binary ? $content : decode('UTF-8', $content);
+    }
+    last unless $ZIP->nextStream();
+  }
+  close($ZIP);
+  return undef;
+}
+sub readSheetFile {
+  my ($dir, $file, $name) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  my $content = readZipMember($zipPath, $name, 0);
+  return $content if defined $content;
 
-  open(my $IMG, "./${datadir}/${file}/image.${ext}") or die("image open error: $id:$file,$type // $!");
-  binmode $IMG;
-  binmode STDOUT;
-  print "Content-type: image/".($ext eq 'jpg' ? 'jpeg' : $ext)."\n";
-  print "Cache-Control: public, max-age=604800\n";
-  print "Content-Disposition: inline; filename=\"ytsheet_$::in{id}.$ext\"\n";
-  print "\n";
-  print while (<$IMG>);
-  close($IMG);
-  exit;
+  my $path = sheetFilePath($dir, $file, $name);
+  return undef if !-f $path;
+  open(my $IN, '<', $path) or error "500:データファイルが開けませんでした。";
+  my $data = do { local $/; <$IN> };
+  close($IN);
+  return $data;
+}
+sub readSheetFileBinary {
+  my ($dir, $file, $name) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  my $content = readZipMember($zipPath, $name, 1);
+  return $content if defined $content;
+
+  my $path = sheetFilePath($dir, $file, $name);
+  return undef if !-f $path;
+  open(my $IN, '<', $path) or error "500:データファイルが開けませんでした。";
+  binmode $IN;
+  my $data = do { local $/; <$IN> };
+  close($IN);
+  return $data;
+}
+sub readSheetFileLines {
+  my ($dir, $file, $name) = @_;
+  my $content = readSheetFile($dir, $file, $name);
+  return wantarray ? () : undef if !defined $content;
+  return split(/(?<=\n)/, $content);
+}
+sub readSheetRecordLines {
+  my ($dir, $file, $datatype, $log) = @_;
+  my @source = readSheetFileLines($dir, $file, "${datatype}.cgi");
+  if(!@source){
+    checkDeletedSheet();
+    error('404:シートが見つかりませんでした。');
+  }
+  elsif($datatype ne 'logs'){
+    return @source;
+  }
+
+  my @lines;
+  my $hit = 0;
+  foreach (@source){
+    if (index($_, "=") == 0){
+      if (index($_, "=${log}=") == 0){ $hit = 1; next; }
+      if ($hit){ last; }
+    }
+    if (!$hit) { next; }
+    push(@lines, $_);
+  }
+  if(!$hit){ error("404:過去ログ（${log}）が見つかりません。"); }
+  return @lines;
+}
+sub checkDeletedSheet {
+  if(open (my $LIST, '<', $set::data_dir.'/deleted.cgi')){
+    while(my $line = <$LIST>){
+      if(index($line, "$::in{id}<") == 0){ error('410:削除されたシートです。'); }
+    }
+    close($LIST);
+  }
+  if(defined &viewNotFound) { viewNotFound(); }
+}
+sub sheetFileMTime {
+  my ($dir, $file, $name) = @_;
+  my $path = sheetFilePath($dir, $file, $name);
+  return (stat($path))[9] if -f $path;
+  my $zipPath = sheetZipPath($dir, $file);
+  return (stat($zipPath))[9] if -f $zipPath;
+  return undef;
+}
+sub sheetZipTmpDir {
+  my $tmpDir = "${set::data_dir}/.tmp";
+  if(!-d $tmpDir){
+    mkdir $tmpDir or -d $tmpDir
+      or error "500:ZIP一時ディレクトリの作成に失敗しました。$!";
+  }
+  return $tmpDir;
+}
+sub createSheetZipTmpFile {
+  my $tmpDir = sheetZipTmpDir();
+  my $tmpfile;
+  my $lastError;
+  foreach (1 .. 100) {
+    $tmpfile = "$tmpDir/tmp_zip_$::in{mode}$::in{type}_".randomId(16);
+    if(sysopen(my $TMP, $tmpfile, O_WRONLY | O_EXCL | O_CREAT)){
+      close($TMP);
+      return $tmpfile;
+    }
+    $lastError = "$!";
+  }
+  error "500:ZIP一時ファイルの作成に失敗しました。$lastError";
+}
+sub writeSheetZip {
+  my ($zipPath, $entries) = @_;
+  my $tmpfile;
+  my @names = sort keys %{$entries};
+  if(!@names){
+    unlink $zipPath;
+    return;
+  }
+
+  my $zipError;
+  my $ok = eval {
+    $tmpfile = createSheetZipTmpFile();
+    my $first = shift @names;
+
+    my $ZIP = IO::Compress::Zip->new(
+      $tmpfile,
+      Name   => $first,
+      Method => IO::Compress::Zip::ZIP_CM_STORE(),
+    ) or do { $zipError = "500:ZIPファイルの作成に失敗しました。$IO::Compress::Zip::ZipError"; die; };
+    print $ZIP isSheetBinaryEntry($first) ? $entries->{$first} : encode('UTF-8', $entries->{$first});
+    foreach my $name (@names){
+      $ZIP->newStream(
+        Name   => $name,
+        Method => IO::Compress::Zip::ZIP_CM_STORE(),
+      ) or do { $zipError = "500:ZIPエントリの作成に失敗しました。$IO::Compress::Zip::ZipError"; die; };
+      print $ZIP isSheetBinaryEntry($name) ? $entries->{$name} : encode('UTF-8', $entries->{$name});
+    }
+    close($ZIP) or do { $zipError = "500:ZIPファイルの保存に失敗しました。$IO::Compress::Zip::ZipError"; die; };
+    rename $tmpfile, $zipPath or do { $zipError = "500:ZIPファイルの差し替えに失敗しました。"; die; };
+    1;
+  };
+  if(!$ok){
+    my $message = $zipError || $@ || '500:ZIPファイルの保存に失敗しました。';
+    unlink $tmpfile if $tmpfile && -f $tmpfile;
+    error $message;
+  }
+}
+
+sub readSheetZipEntries {
+  my $zipPath = shift;
+  my %entries;
+  return %entries if !-f $zipPath;
+
+  my $ZIP = IO::Uncompress::Unzip->new($zipPath)
+    or error "500:ZIPファイルのオープンに失敗しました。$IO::Uncompress::Unzip::UnzipError";
+  while (1) {
+    my $header = $ZIP->getHeaderInfo();
+    if($header){
+      my $content = '';
+      my $buffer;
+      while (($ZIP->read($buffer)) > 0) { $content .= $buffer; }
+      $entries{$header->{Name}} = isSheetBinaryEntry($header->{Name}) ? $content : decode('UTF-8', $content);
+    }
+    last unless $ZIP->nextStream();
+  }
+  close($ZIP);
+  return %entries;
+}
+sub cleanupSheetLegacyDir {
+  my ($dir, $file, $entries) = @_;
+  my $legacyDir = sheetLegacyDirPath($dir, $file);
+  return if !-d $legacyDir;
+
+  foreach my $name (keys %{$entries}){
+    next if $name =~ m|/|;
+    my $path = sheetFilePath($dir, $file, $name);
+    unlink $path if -f $path;
+  }
+  rmdir $legacyDir;
+}
+sub updateSheetArchive {
+  my ($dir, $file, $code) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  my %current = readSheetZipEntries($zipPath);
+  my $changed = $code->(\%current);
+  if($changed){
+    writeSheetZip($zipPath, \%current);
+    cleanupSheetLegacyDir($dir, $file, \%current);
+  }
+  return $changed;
+}
+sub saveSheetArchive {
+  my ($dir, $file, $entries) = @_;
+  $entries ||= {};
+  updateSheetArchive($dir, $file, sub {
+    my $current = shift;
+    foreach my $name (keys %{$entries}){ $current->{$name} = $entries->{$name}; }
+    return 1;
+  });
+}
+sub updateSheetFile {
+  my ($dir, $file, $name, $content) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  if(-f $zipPath){
+    saveSheetArchive($dir, $file, { $name => $content });
+  }
+  else {
+    sysopen(my $OUT, sheetFilePath($dir, $file, $name), O_WRONLY | O_TRUNC | O_CREAT)
+      or error "500:データファイルが開けませんでした。";
+    flock($OUT, 2);
+    binmode $OUT if isSheetBinaryEntry($name);
+    print $OUT $content;
+    close($OUT);
+  }
+}
+sub deleteSheetFile {
+  my ($dir, $file, $name) = @_;
+  my $zipPath = sheetZipPath($dir, $file);
+  my $legacyDeleted = unlink sheetFilePath($dir, $file, $name);
+  if(-f $zipPath){
+    my $zipDeleted = updateSheetArchive($dir, $file, sub {
+      my $current = shift;
+      return 0 if !exists $current->{$name};
+      delete $current->{$name};
+      return 1;
+    });
+    return $zipDeleted || $legacyDeleted;
+  }
+  return $legacyDeleted;
 }
 
 ### プレイヤー名取得 --------------------------------------------------
-sub getplayername {
+sub getPlayerName {
   my $in_id = shift;
   open (my $FH, '<', $set::userfile);
   while (my $line = <$FH>) {
@@ -116,45 +480,133 @@ sub getplayername {
   return '';
 }
 
-
-### 編集保護設定取得 --------------------------------------------------
-sub getProtectType {
+### 特定キーの最新データ取得 --------------------------------------------------
+sub getLatestData {
+  my $dir = shift;
   my $file = shift;
-  my $protect   = '';
-  my $forbidden = '';
-  open (my $IN, '<', $file) or error('キャラクターシートがありません。');
-  while (my $line = <$IN>){
-    if   ($line =~ /^protect<>(.*)\n/)  { $protect = $1; }
-    elsif($line =~ /^forbidden<>(.*)\n/){ $forbidden = $1; }
-    
-    if($protect && $forbidden){ close($IN); last; }
+  my @keys = @_;
+  my %pc;
+  foreach my $line (readSheetRecordLines($dir, $file, 'data')){
+    chomp $line;
+    my ($key, $value) = split(/<>/, $line, 2);
+    $pc{$key} = $value;
   }
-  close($IN);
-  return ($protect, $forbidden);
+  my %output;
+  foreach my $key (@keys){
+    $output{$key} = $pc{$key};
+  }
+
+  return %output;
 }
 
 ### 暗号化 --------------------------------------------------
-sub e_crypt {
-  my $plain = shift;
-  my $s;
-  my @salt = ('0'..'9','A'..'Z','a'..'z','.','/');
-  1 while (length($s .= $salt[rand(@salt)]) < 8);
-  return crypt($plain,index(crypt('a','$1$a$'),'$1$a$') == 0 ? '$1$'.$s.'$' : $s);
+my $USE_ARGON2 = eval {
+  require Crypt::Argon2;
+  Crypt::Argon2->import(qw/argon2id_pass argon2id_verify/);
+  1;
+} ? 1 : 0;
+
+my $CRYPT_METHOD;
+sub getCryptMethod {
+  return $CRYPT_METHOD if defined $CRYPT_METHOD;
+
+  my $test;
+
+  # SHA-512 crypt
+  $test = crypt('a', '$6$testsalt$');
+  if (defined $test && index($test, '$6$') == 0) {
+    return $CRYPT_METHOD = 'sha512';
+  }
+  # SHA-256 crypt
+  $test = crypt('a', '$5$testsalt$');
+  if (defined $test && index($test, '$5$') == 0) {
+    return $CRYPT_METHOD = 'sha256';
+  }
+  # MD5 crypt
+  $test = crypt('a', '$1$testsalt$');
+  if (defined $test && index($test, '$1$') == 0) {
+    return $CRYPT_METHOD = 'md5';
+  }
+
+  return $CRYPT_METHOD = '';
 }
 
-sub c_crypt {
+sub encrypt {
+  my $plain = shift;
+  return '' if !defined $plain || $plain eq '';
+
+  my $s = createSalt(16);
+  if($USE_ARGON2){
+    my $time_cost = 3;
+    my $memory_cost = 65536; # 64 MiB
+    my $parallelism = 1;
+    my $tag_length = 32;
+    return argon2id_pass($plain, $s, $time_cost, $memory_cost, $parallelism, $tag_length);
+  }
+
+  # crypt()
+  my $method = getCryptMethod();
+  my $CRYPT_ROUNDS = 100000;
+  if ($method eq 'sha512') {
+    my $salt = createSalt(16, 1);
+    return crypt(
+      $plain,
+      "\$6\$rounds=$CRYPT_ROUNDS\$$salt\$"
+    );
+  }
+  if ($method eq 'sha256') {
+    my $salt = createSalt(16, 1);
+    return crypt(
+      $plain,
+      "\$5\$rounds=$CRYPT_ROUNDS\$$salt\$"
+    );
+  }
+  if ($method eq 'md5') {
+    my $salt = createSalt(8, 1);
+    return crypt(
+      $plain,
+      "\$1\$$salt\$"
+    );
+  }
+
+  return crypt($plain, $s);
+}
+
+sub verifyCrypt {
   my($plain,$crypt) = @_;
-  return ($plain ne '' && $crypt ne '' && crypt($plain,$crypt) eq $crypt);
+  return 0 if !defined $plain || !defined $crypt || $plain eq '' || $crypt eq '';
+
+  if($USE_ARGON2 && $crypt =~ /^\$argon2id\$/){
+    return argon2id_verify($crypt, $plain) ? 1 : 0;
+  }
+  return crypt($plain,$crypt) eq $crypt;
+}
+
+sub createSalt {
+  my ($length, $cryptSafe) = @_;
+
+  if(!$cryptSafe && open(my $RND, '<:raw', '/dev/urandom')){
+    my $salt = '';
+    if(read($RND, $salt, $length) == $length){
+      close($RND);
+      return $salt;
+    }
+    close($RND);
+  }
+
+  my @salts = ('0'..'9','A'..'Z','a'..'z','.','/');
+  my $salt = '';
+  1 while (length($salt .= $salts[rand(@salts)]) < $length);
+  return $salt;
 }
 
 ### ログイン --------------------------------------------------
-sub log_in {
-  if($set::oauth_service){ error("$set::oauth_serviceでのログインのみ有効です"); }
+sub logIn {
+  if($set::oauth_service){ error("$set::oauth_serviceでのログインのみ有効です。"); }
   my $key = getKey($_[0],$_[1]);
   if($key){
     my $flag = 0;
-    my $mask = umask 0;
-    sysopen (my $FH, $set::login_users, O_RDWR | O_CREAT, 0666);
+    sysopen (my $FH, $set::login_users, O_RDWR | O_CREAT);
       flock($FH, 2);
       my @list = <$FH>;
       seek($FH, 0, 0);
@@ -167,10 +619,10 @@ sub log_in {
       print $FH "$_[0]<>$key<>".time."<>\n";
       truncate($FH, tell($FH));
     close ($FH);
-    print &cookie_set($set::cookie,$_[0],$key,'+365d');
+    print &setCookie($set::cookie,$_[0],$key,'+365d');
   }
-  else { error('ログインできませんでした'); }
-  
+  else { error('ログインできませんでした。'); }
+
   if($set::url_home){ print "Location: $set::url_home\n\n"; }
   else { print "Location: ./\n\n"; }
 }
@@ -182,21 +634,38 @@ sub getKey {
   open (my $FH, '<', $set::userfile);
   while (my $line = <$FH>) {
     my ($id, $pass) = (split /<>/, $line)[0,1];
-    if ($in_id eq $id && (&c_crypt($in_pass, $pass))) {
+    if ($in_id eq $id && (&verifyCrypt($in_pass, $pass))) {
       close($FH);
       my $s;
       my @salt = ('0'..'9','A'..'Z','a'..'z','.','/');
       1 while (length($s .= $salt[rand(@salt)] ) < 12);
+      if($USE_ARGON2 && $pass !~ /^\$argon2id\$/){ updatePasswordHash($in_id,$in_pass); }
       return $s;
     }
   }
   close($FH);
   return 0;
 }
+sub updatePasswordHash {
+  my ($id, $pass) = @_;
+  overwriteFile($set::userfile, sub {
+    my ($READ, $WRITE) = @_;
+    foreach (<$READ>){
+      if(index($_, "$id<") == 0){
+        my @data = split(/<>/, $_, -1);
+        @data[1] = encrypt($pass);
+        print $WRITE join('<>', @data);
+      }
+      else{
+        print $WRITE $_;
+      }
+    }
+  });
+}
 
 ### ログアウト --------------------------------------------------
-sub log_out {
-  my ($id, $key) = &cookie_get;
+sub logOut {
+  my ($id, $key) = &getCookie;
   my $key  = $::in{key};
   open (my $FH, '+<', $set::login_users);
   flock($FH, 2);
@@ -212,14 +681,15 @@ sub log_out {
   }
   truncate($FH, tell($FH));
   close($FH);
-  print &cookie_set($set::cookie,$id,$key,'Thu, 1-Jan-1970 00:00:00 GMT');
-  
-  if($set::url_home){ print "Location: $set::url_home\n\n"; }
+  print &setCookie($set::cookie,$id,$key,'Thu, 1-Jan-1970 00:00:00 GMT');
+
+  if($::in{mode} eq 'delete-account'){ info('アカウントの削除が完了しました') }
+  elsif($set::url_home){ print "Location: $set::url_home\n\n"; }
   else { print "Location: ./\n\n"; }
 }
 ### ログインチェック --------------------------------------------------
 sub check {
-  my ($in_id, $in_key) = &cookie_get;
+  my ($in_id, $in_key) = &getCookie;
   return 0 if !$in_id || !$in_key;
   open (my $FH, $set::login_users) or 0;
   while (my $line = <$FH>){
@@ -236,7 +706,7 @@ sub check {
 }
 
 ### Cookieセット --------------------------------------------------
-sub cookie_set {
+sub setCookie {
   my $value   = "$_[1]<>$_[2]";
   my $cookie = new CGI::Cookie(
     -name    => $_[0] ,
@@ -247,7 +717,7 @@ sub cookie_set {
 }
 
 ### Cookieゲット --------------------------------------------------
-sub cookie_get {
+sub getCookie {
   my %cookies = fetch CGI::Cookie;
   my $value   = $cookies{$set::cookie}->value if(exists $cookies{$set::cookie});
   my @return = split(/<>/, $value);
@@ -255,7 +725,7 @@ sub cookie_get {
 }
 
 ### ランダムID生成 --------------------------------------------------
-sub random_id {
+sub randomId {
   my @char = (0..9,'a'..'z','A'..'Z');
   my $s;
   1 while (length($s .= $char[rand(@char)]) < $_[0]);
@@ -263,7 +733,7 @@ sub random_id {
 }
 
 ### トークンチェック --------------------------------------------------
-sub token_check {
+sub checkToken {
   my $in_token = shift;
   my $flag = 0;
   open (my $FH, '+<', $set::tokenfile);
@@ -278,10 +748,9 @@ sub token_check {
   }
   truncate($FH, tell($FH));
   close($FH);
-  
+
   return $flag;
 }
-
 ### メール送信 --------------------------------------------------
 sub sendmail {
   my $from    = encode('MIME-Header', "ゆとシートⅡ")." <$set::admimail>";
@@ -293,7 +762,7 @@ sub sendmail {
   $to      =~ s/\r|\n//g;
   $subject =~ s/\r|\n//g;
 
-  open (my $MA, "|$set::sendmail -t") or &error("sendmailの起動に失敗しました。");
+  open (my $MA, "|$set::sendmail -t") or &error("500:sendmailの起動に失敗しました。");
   print $MA "To: $to\n";
   print $MA "From: $from\n";
   print $MA "Subject: $subject\n";
@@ -317,7 +786,7 @@ sub uri_escape_utf8 {
 sub ceil {
   my $num = shift;
   my $val = 0;
- 
+
   $val = 1 if($num > 0 and $num != int($num));
   return int($num + $val);
 }
@@ -350,6 +819,16 @@ sub commify {
   return $num;
 }
 
+### 整数判定 --------------------------------------------------
+sub isInteger {
+  $_[0] =~ /^[+-]?[0-9]+$/;
+}
+sub hasInteger {
+  foreach(@_) {
+    return 1 if isInteger($_);
+  }
+  return 0;
+}
 
 ### エポック秒 => 年-月-日 時:分 --------------------------------------------------
 sub epocToDate {
@@ -361,76 +840,38 @@ sub epocToDateQuery {
   return sprintf("%04d-%02d-%02d-%02d-%02d-%02d",$year+1900,$mon+1,$day,$hour,$min, $sec);
 }
 
-### 安全にevalする --------------------------------------------------
+### 数式を安全にevalする --------------------------------------------------
 sub s_eval {
   my $i = shift;
-  $i =~ s/[ 　]//g;
+  $i =~ y/ 　\t//d;
   if($i =~ /[^0-9,\+\-\*\/\%\(\) ]/){ $i = 0; }
   $i =~ s/,([0-9]{3}(?![0-9]))/$1/g;
   return eval($i);
 }
 
-### グループ設定の変換 --------------------------------------------------
-sub groupArrayToHash {
-  my @array = $_[0] ? @{$_[0]} : @set::groups;
-  my %hash;
-  foreach (@array){
-    $hash{@$_[0]} = {
-      "sort" => @$_[1],
-      "name" => @$_[2],
-      "text" => @$_[3],
-    };
+### 前後の空白削除 --------------------------------------------------
+sub trim {
+  return shift =~ s/^\s+|\s+$//gr;
+}
+
+### 改行変換 --------------------------------------------------
+sub convertEscapedBrToNewlines {
+  my $pc = shift;
+  for my $key (@_) {
+    next unless defined $pc->{$key};
+    $pc->{$key} =~ s/&lt;br&gt;/\n/g;
   }
-  return %hash;
 }
-sub groupArrayToList {
-  my $selected = $_[0];
-  my @array = $_[1] ? @{$_[1]} : @set::groups;
-  my @list;
-  foreach (sort { $a->[1] cmp $b->[1] } @array){
-    push(@list, {
-      "ID" => @$_[0],
-      "NAME" => @$_[2],
-      "TEXT" => @$_[3],
-      "SELECTED" => $selected eq @$_[0] ? 'selected' : '',
-    });
+sub convertNewlinesToBrTag {
+  my $pc = shift;
+  for my $key (@_) {
+    next unless defined $pc->{$key};
+    $pc->{$key} =~ s/\r\n?|\n/<br>/g;
   }
-  return \@list;
-}
-
-### 性別記号変換 --------------------------------------------------
-sub stylizeGender {
-  my $gender = shift;
-  my $m_flag; my $f_flag; my $n_flag;
-  $gender =~ s/^(.+?)[\(（].*?[）\)]$/$1/;
-  $gender =~ tr/Ａ-Ｚａ-ｚ/A-Za-z/;
-  if($gender =~ /男|おとこ|オトコ|♂|雄|オス|爺|漢|ショタ|(?<!fe)m(ale|$)|(?<!wo)man/i) { $m_flag = 1 }
-  if($gender =~ /女|おんな|オンナ|♀|雌|メス|婆|娘|ロリ|f(em(ale)?|$)|woman/i)       { $f_flag = 1 }
-  if($gender =~ /無|なし|^[\-ー‐‑–—―−ｰ]$|non/i)               { $n_flag = 1 }
-  if($gender =~ /元|両|半|トランス|ノンバ|non|Ft[MX]|Mt[FX]|^[XA]/i) { $m_flag = 1; $f_flag = 1 }
-
-
-  if   ($n_flag){ $gender = '<span data-gender="none">―</span>' }
-  elsif($m_flag && $f_flag){ $gender = '<span data-gender="cross">⚧</span>' }
-  elsif($m_flag){ $gender = '<span data-gender="male">♂</span>' }
-  elsif($f_flag){ $gender = '<span data-gender="female">♀</span>' }
-  else { $gender = '<span data-gender="unknown">？</span>' }
-
-  return $gender;
-}
-
-### 年齢変換 --------------------------------------------------
-sub stylizeAge {
-  my $age = shift;
-  $age =~ s/^(.+?)[\(（].*?[）\)]$/$1/;
-  $age =~ tr/０-９/0-9/;
-  if($age =~ /[0-9]$/){ $age .= '歳'; }
-  $age =~ s/([^0-9]+)/<span class="small">$1<\/span>/g;
-  return $age;
 }
 
 ### エスケープ --------------------------------------------------
-sub pcEscape {
+sub escapePcData {
   my $text = shift;
   $text =~ s/&/&amp;/g;
   $text =~ s/"/&quot;/g;
@@ -460,23 +901,31 @@ sub unescapeTags {
   $text =~ s/&amp;/&/g;
   $text =~ s/&quot;/"/g;
   $text =~ s/&lt;br&gt;/\n/gi;
-  
+
   #$text =~ s/\{\{([0-9\+\-\*\/\%\(\) ]+?)\}\}/s_eval($1);/eg;
-  
-  $text =~ s#(―+)#<span class="d-dash">$1</span>#g;
-  
+
+  $text =~ s#(―{2,})#<span class="d-dash">$1</span>#g;
+
   $text =~ s{©}{<i class="s-icon copyright">©</i>}gi;
 
   if($set::game eq 'sw2'){
     if($::in{mode} ne 'download'){
-      $text =~ s/\[魔\]/<img alt="&#91;魔&#93;" class="i-icon" src="${set::icon_dir}wp_magic.png">/gi;
-      $text =~ s/\[刃\]/<img alt="&#91;刃&#93;" class="i-icon" src="${set::icon_dir}wp_edge.png">/gi;
-      $text =~ s/\[打\]/<img alt="&#91;打&#93;" class="i-icon" src="${set::icon_dir}wp_blow.png">/gi;
+      $text =~ s/\[魔\]/<img alt="&#91;魔&#93;" class="i-icon" src="${set::icon_dir}item_magic.png">/gi;
+      $text =~ s/\[刃\]/<img alt="&#91;刃&#93;" class="i-icon" src="${set::icon_dir}item_edge.png">/gi;
+      $text =~ s/\[打\]/<img alt="&#91;打&#93;" class="i-icon" src="${set::icon_dir}item_blow.png">/gi;
+      $text =~ s/\[流\]/<img alt="&#91;流&#93;" class="i-icon" src="${set::icon_dir}item_school.png">/gi;
+      $text =~ s/\[ア\]/<img alt="&#91;ア&#93;" class="i-icon" src="${set::icon_dir}item_school_a.png">/gi;
+      $text =~ s/\[テ\]/<img alt="&#91;テ&#93;" class="i-icon" src="${set::icon_dir}item_school_t.png">/gi;
+      $text =~ s/\[特\]/<img alt="&#91;特&#93;" class="i-icon" src="${set::icon_dir}item_local.png">/gi;
     }
     else {
-      $text =~ s|\[魔\]|<img alt="&#91;魔&#93;" class="i-icon" src="data:image/webp;base64,UklGRqwAAABXRUJQVlA4TJ8AAAAvD8ADED9AqIGhhP5FvFQxEa6LmgCEILtJBvnkvBhvESIBCHf8jwZ44QAfzH8IQD8sZ2K6bB8tgeNGktymAZLSmz6E/R5A9z5wI6BJQfzavcsfUBAR/U/AwRmBrkMMOtVnMZxWXvYvc5Vfi8Gc57JPOM2vxTRxVS5767suXovlPnGH7G2uCU+wPO/h+bW57+GIwWvCGbqoHZxfuo7/BAAA">|gi;
-      $text =~ s|\[刃\]|<img alt="&#91;刃&#93;" class="i-icon" src="data:image/webp;base64,UklGRmgAAABXRUJQVlA4TFwAAAAvD8ADECcgECD8r1ix5EMgQOhXpkaDgrQNmPq33J35D8B/Cs4KriLZDZv9EAIHgs2gAiCNzR+VyiGi/wGIWX8565unQe15VkDtBrkCr3ZDnhVQt41fgHwX6nojAA==">|gi;
-      $text =~ s|\[打\]|<img alt="&#91;打&#93;" class="i-icon" src="data:image/webp;base64,UklGRnAAAABXRUJQVlA4TGMAAAAvD8ADEB+gkG0EODSdId0jEEgC2V9sEQVpG7C49roz/wF8ppPAprb2Ji8JxUO38jthZ84eCzQJHTURgQSmbiOi/4GE4Cs4f8Xxx4x/SfOVNJdDdkez1dghIZdQYvAKLJADIQAA">|gi;
+      $text =~ s|\[魔\]|<img alt="&#91;魔&#93;" class="i-icon" src="data:image/webp;base64,UklGRngAAABXRUJQVlA4TGwAAAAvDUADEJUwqm2rSmh72cEmtnAOl7eMwJ+7zogw28hpOPMa4UHcl0zaNkgVlL67ppBtBAjj/MUO5DeYtE2KbLc8HtGup3ve0ssIJGMUH2QWX6zWQv8NUmOoKtlKw84kPYHu3EhQYAK96yf1aB0=">|gi;
+      $text =~ s|\[刃\]|<img alt="&#91;刃&#93;" class="i-icon" src="data:image/webp;base64,UklGRnQAAABXRUJQVlA4TGcAAAAvDUADEA5HbSMJEtB9L43lcuiOSHdjqKqoJMJsI6D9JjGQMz0yBW3bMPwB92+SggYEGKestBqxCXiAz6/MF3vqbz4X8f/vInwp2NqETVZh0yRFBVsZBdjKXDDNXIBmFkgb0ESL1FwBAA==">|gi;
+      $text =~ s|\[打\]|<img alt="&#91;打&#93;" class="i-icon" src="data:image/webp;base64,UklGRngAAABXRUJQVlA4TGsAAAAvDUADEA4HbSNJEqj78BymA3eA+sFQUpdSitq2gfgj7PktgQGYyKRtSq8qmsmZJpC0Ya1We/3OmYAHpP2ufrcRz/n/f3cZPkXKpUt3aQQNKQ6UoxGwCfVICXGA2FaI7US2BfEsDi045A3yFgA=">|gi;
+      $text =~ s|\[流\]|<img alt="&#91;流&#93;" class="i-icon" src="data:image/webp;base64,UklGRqAAAABXRUJQVlA4TJQAAAAvDUADENVACeBIkIQPnpc389pe3lvZVREN4UUahyRcQds2TNt9BMM0/nwmRW3bQD35kxyIvSqlbRswrPf2+aKpMGkDpjO3fL6w/d3nz52A88P3nRn4zf0F9ydcSaSQs+k/cGnb1vho0i1KONjStVsAomhS1wBp2nfJKk1r4NCeUHHO1GXdFvuKmqTq2T6AQM72Gx4E">|gi;
+      $text =~ s|\[ア\]|<img alt="&#91;ア&#93;" class="i-icon" src="data:image/webp;base64,UklGRmgAAABXRUJQVlA4TFwAAAAvDUADEFUwattI0O8ILKkDeviOxOwuhrRR07YBm6r6TzCdAIJsG6n5k23/BKzhfa+rn3z70xNUAziDwgM/Rw2QxDpMIrRxR9vChSEerMmJNqfQcgElXhI8rsHrAg==">|gi;
+      $text =~ s|\[テ\]|<img alt="&#91;テ&#93;" class="i-icon" src="data:image/webp;base64,UklGRmQAAABXRUJQVlA4TFcAAAAvDUADEFUwiCTJiZH/BwSiDG+YuGRhA5G2zfz7u5LSA7IBylRhpiBtA0ZU/RvbnYDHeHe1qc/+3zctkV7x1GTQoCsRzYFCBBgzD9ASADYAsTJp5tZjqE0A">|gi;
+      $text =~ s|\[特\]|<img alt="&#91;特&#93;" class="i-icon" src="data:image/webp;base64,UklGRogAAABXRUJQVlA4THwAAAAvDUADECdAJm3jX1Rl1EjZOSFk2Uj+BKd0Dufw669k2Uj+Aud0CAfx+49k0jZ1Vf9/LY1F21WA/XcVGESyU+elUwEJgwA4ogAFbab+TX08RPR/AhbvzUOS0EZ5UjZMniVNAe6SijkiHJrCnJKbObTr6Bf0ccZH2c3vIik2">|gi;
     }
     if($::SW2_0){
       $text =~ s/(\[[常主補宣条選]\])+/&textToIcon($&);/egi;
@@ -485,32 +934,35 @@ sub unescapeTags {
       $text =~ s/(\[[常準主補宣]\])+/&textToIcon($&);/egi;
       $text =~ s/「((?:[○◯〇△＞▶〆☆≫»□☐☑🗨]|&gt;&gt;)+)/"「".&textToIcon($1);/egi;
     }
+    $text =~ s|\[[⤴↑]\]|<i class="s-icon uplift">⤴</i>|g;
+    $text =~ s|\[[⤵↓]\]|<i class="s-icon calm">⤵</i>|g;
+    $text =~ s|\[♡\]|<i class="s-icon heart">♡</i>|g;
   }
-  
-  
+
+
   our @linkPlaceholders;
   $text =~ s/((?:making|能力値作成(?:履歴)?)#([0-9]+(?:-[0-9]+)?))/ &generateLinkTag("?&mode=making&num=$2",$1) /egi if($set::game eq 'sw2'); # メイキングリンク
   $text =~ s/\[\[(.+?)&gt;((?:(?!<br>)[^"])+?)\]\]/ &generateLinkTag($2,$1) /egi; # リンク
   $text =~ s/\[(.+?)#([a-zA-Z0-9\-]+?)\]/ &generateLinkTag("?id=$2",$1) /egi; # シート内リンク
   $text =~ s/(https?:\/\/[^\s\<]+)/ &generateLinkTag($1,$1) /egi; # 自動リンク
-  
+
   $text =~ s/'''(.+?)'''/<span class="oblique">$1<\/span>/gi; # 斜体
   $text =~ s/''(.+?)''/<b>$1<\/b>/gi;  # 太字
   $text =~ s/%%(.+?)%%/<span class="strike">$1<\/span>/gi;  # 打ち消し線
   $text =~ s/__(.+?)__/<span class="underline">$1<\/span>/gi;  # 下線
-  $text =~ s/\{\{(.+?)\}\}/<span style="color:transparent">$1<\/span>/gi;  # 透明
+  $text =~ s/\{\{(.+?)\}\}/<span class="transparent">$1<\/span>/gi;  # 透明
   $text =~ s/[|｜]([^|｜\n]+?)《(.+?)》/<ruby><rp>｜<\/rp>$1<rp>《<\/rp><rt>$2<\/rt><rp>》<\/rp><\/ruby>/gi; # なろう式ルビ
   $text =~ s/《《(.+?)》》/<span class="text-em">$1<\/span>/gi; # カクヨム式傍点
 
   $text =~ s/\x{FFFC}(\d+)\x{FFFC}/$linkPlaceholders[$1-1]/g; # リンク後処理
-  
+
   $text =~ s/\n/<br>/gi;
 
   if($set::game eq 'sw2'){
   }
-  
+
   return $text;
-  
+
   sub generateLinkTag {
     my $url = shift;
     my $txt = shift;
@@ -525,33 +977,35 @@ sub unescapeTags {
 sub unescapeTagsLines {
   my $text = shift;
   $text =~ s/&lt;br&gt;/\n/gi;
-  
+
   $text =~ s|^//(.*?)\n?$||gm; # コメントアウト
-  
+
   $text =~ s/\\\\\n/<br>/gi;
-  
+
   $text =~ s/^LEFT:/<\/p><p class="left">/gim;
   $text =~ s/^CENTER:/<\/p><p class="center">/gim;
   $text =~ s/^RIGHT:/<\/p><p class="right">/gim;
-  
+
   my $d_count = 0;
-  $d_count += ($text =~ s/^\[&gt;\]\*\*\*\*(.*?)$/<\/p><details><summary class="header4">$1<\/summary><div class="detail-body"><p>/gim);
-  $d_count += ($text =~ s/^\[&gt;\]\*\*\*(.*?)$/<\/p><details><summary class="header3">$1<\/summary><div class="detail-body"><p>/gim);
-  $d_count += ($text =~ s/^\[&gt;\]\*\*(.*?)$/<\/p><details><summary class="header2">$1<\/summary><div class="detail-body"><p>/gim);
-  $d_count += ($text =~ s/^\[&gt;\]\*(.*?)$/<\/p><details><summary class="header1">$1<\/summary><div class="detail-body"><p>/gim);
-  $d_count += ($text =~ s/^\[&gt;\](.+?)$/<\/p><details><summary>$1<\/summary><div class="detail-body"><p>/gim);
-  $d_count += ($text =~ s/^\[&gt;\]$/<\/p><details><summary>詳細<\/summary><div class="detail-body"><p>/gim);
-  $d_count -= ($text =~ s/^\[-{3,}\]\n?$/<\/p><\/div><\/details><p>/gim);
-  
-  $text =~ s/^-{4,}$/<\/p><hr><p>/gim;  
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\]\*\*\*\*(.*?)$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary class=\"header4\">$2<\/summary><div class=\"detail-body\"><p>"/gime);
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\]\*\*\*(.*?)$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary class=\"header3\">$2<\/summary><div class=\"detail-body\"><p>"/gime);
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\]\*\*(.*?)$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary class=\"header2\">$2<\/summary><div class=\"detail-body\"><p>"/gime);
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\]\*(.*?)$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary class=\"header1\">$2<\/summary><div class=\"detail-bod\"><p>"/gime);
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\](.+?)$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary>$2<\/summary><div class=\"detail-body\"><p>"/gime);
+  $d_count += ($text =~ s/^\[(&gt;|[vＶｖ])\]$/"<\/p><details @{[$1 eq '&gt;' ? '' : 'open']}><summary>詳細<\/summary><div class=\"detail-body\"><p>"/gime);
+  while($text =~ s/^\[-{3,}\]\n?$/<\/p><\/div><\/details><p>/im) {
+    $d_count--;
+    last if $d_count <= 0;
+  }
+
+  $text =~ s/^-{4,}$/<\/p><hr><p>/gim;
   $text =~ s/^( \*){4,}$/<\/p><hr class="dotted"><p>/gim;
   $text =~ s/^( \-){4,}$/<\/p><hr class="dashed"><p>/gim;
   $text =~ s/^\*\*\*\*(.*?)$/<\/p><h5>$1<\/h5><p>/gim;
   $text =~ s/^\*\*\*(.*?)$/<\/p><h4>$1<\/h4><p>/gim;
   $text =~ s/^\*\*(.*?)$/<\/p><h3>$1<\/h3><p>/gim;
-  $text =~ s/\A\*(.*?)$/$main::pc{"head_$_"} = $1; ''/egim if $_;
   $text =~ s/^\*(.*?)$/<\/p><h2>$1<\/h2><p>/gim;
-  
+
   $text =~ s/(?:^(?:\|(?:.*?))+\|[hc]?(?:\n|$))+/'<\/p>'.&generateTable($&).'<p>'/egim;
 
   $text =~ s/^\:(.*?)\|(.*?)$/<dt>$1<\/dt><dd>$2<\/dd>/gim;
@@ -564,12 +1018,12 @@ sub unescapeTagsLines {
   $text =~ s/(^|<p(?:.*?)>|<hr(?:.*?)>)\n/$1/gi;
   $text =~ s/<p><\/p>//gi;
   $text =~ s/\n/&lt;br&gt;/gi;
-  
+
   while($d_count > 0) {
     $text .= "</div></details>";
     $d_count--;
   }
-  
+
   return $text;
 }
 
@@ -608,7 +1062,7 @@ sub generateTable {
         }
         foreach my $class (reverse @classesCell){
           if($class =~ /^(left|center|right)$/){
-            @classesCell = grep { $_ eq $class || $_ !~ /^(left|center|right)$/ } @classesCell;
+            @classesCell = grep { $_ eq $class || !/^(left|center|right)$/ } @classesCell;
             last;
           }
         }
@@ -663,7 +1117,7 @@ sub generateTable {
     while($text =~ s/^(LEFT|CENTER|RIGHT|NOWRAP|SMALL)://){
       push @class, lc($1);
     }
-    if($_ =~ /^([0-9]+)(px|em|\%)/){
+    if($text =~ /^([0-9]+)(px|em|\%)/){
       my $num = $1; my $type = $2;
       if   ($type eq 'px' && $num > 300){ $num = 300 }
       elsif($type eq 'em' && $num >  20){ $num =  20 }
@@ -698,6 +1152,8 @@ sub removeTags {
   $text =~ s#<rp>[》]</rp>#)#g;
   $text =~ s/<img alt="&#91;(.)&#93;"/[$1]<img /g;
   $text =~ s/<.+?>//g;
+  $text =~ s/&#91;/[/g;
+  $text =~ s/&#93;/]/g;
   return $text;
 }
 sub removeRuby {
@@ -706,8 +1162,27 @@ sub removeRuby {
   return $text;
 }
 
+### 性別 --------------------------------------------------
+sub checkGender {
+  my $gender = shift // '';
+  my $m_flag; my $f_flag; my $n_flag;
+  $gender =~ s/^(.+?)[\(（].*?[）\)]$/$1/;
+  $gender =~ tr/Ａ-Ｚａ-ｚ/A-Za-z/;
+  if($gender =~ /男|おとこ|オトコ|♂|雄|オス|爺|漢|(?<!fe)m(ale|$)|(?<!wo)man/i) { $m_flag = 1 }
+  if($gender =~ /女|おんな|オンナ|♀|雌|メス|婆|娘|f(em(ale)?|$)|woman/i) { $f_flag = 1 }
+  if($gender =~ /無|なし|^[\-ー‐‑–—―−ｰ]$|non/i) { $n_flag = 1 }
+  if($gender =~ /元|もと|モト|TS|⚧|両|半|トランス|ノンバ|non-?b|cross|Ft[MX]|Mt[FX]|^[XA]/i) { $m_flag = 1; $f_flag = 1 }
+
+  return
+    ($m_flag && $f_flag) ? 'cross' :
+    ($n_flag) ? 'none' :
+    ($m_flag) ? 'male' :
+    ($f_flag) ? 'female' :
+    'unknown'
+}
+
 ### RGB>HSL --------------------------------------------------
-sub rgb_to_hsl {
+sub rgbToHsl {
   my $re = shift || 0;
   my $gr = shift || 0;
   my $bl = shift || 0;
@@ -747,12 +1222,12 @@ sub rgb_to_hsl {
 
 ### デフォルトカラー --------------------------------------------------
 sub setDefaultColors {
-  my $type = shift;
-  $::pc{$type.'colorHeadBgH'} //= 225;
-  $::pc{$type.'colorHeadBgS'} //=   9;
-  $::pc{$type.'colorHeadBgL'} //=  65;
-  $::pc{$type.'colorBaseBgH'} //= 235;
-  $::pc{$type.'colorBaseBgS'} //=   0;
+  my ($pc,$type) = @_;
+  $pc->{$type.'colorHeadBgH'} //= 225;
+  $pc->{$type.'colorHeadBgS'} //=   9;
+  $pc->{$type.'colorHeadBgL'} //=  65;
+  $pc->{$type.'colorBaseBgH'} //= 235;
+  $pc->{$type.'colorBaseBgS'} //=   0;
 }
 
 ### 進数変換 --------------------------------------------------
@@ -765,6 +1240,13 @@ sub convert10to36 {
     $number = int($number / 36);
   }
   return join('', @work);
+}
+### ケース変換 --------------------------------------------------
+sub kebabToCamel {
+  return $_[0] =~ s/-([a-z])/\u$1/gr;
+}
+sub snakeToCamel {
+  return $_[0] =~ s/_([a-z])/\u$1/gr;
 }
 
 ### 行の有無チェック --------------------------------------------------
@@ -789,51 +1271,291 @@ sub existsRowStrict {
   }
   return 0;
 }
-## 0も偽としたい場合
-
-### 案内画面 --------------------------------------------------
-sub info {
-  our $header = shift;
-  our $message = shift;
-  require $set::lib_info;
-  exit;
-}
-
-### エラー画面 --------------------------------------------------
-sub error {
-  our $header = 'エラー';
-  our $message = shift;
-  require $set::lib_info;
-  exit;
-}
-
-### JSファイル --------------------------------------------------
-sub printJS {
-  my $mode = shift;
-  print "Content-type: text/javascript; charset=utf-8\n";
-  print "Cache-Control: public, max-age=604800\n";
-  print "\n";
-  print "// ytsheet JS output mode:$mode \n\n";
-  if($mode eq 'consts' && $set::lib_js_consts){
-    print "const base64Mode = ".($set::base64mode || 0).";\n";
-    require $set::lib_js_consts;
+## 全てが真の場合のみ
+sub existsRowFull {
+  my $prefix = shift;
+  foreach(@_){
+    if(!$::pc{$prefix.$_}){ return 0; }
   }
-  exit;
+  return 1;
 }
 
-### JSON --------------------------------------------------
-sub infoJson {
-  our $type = shift;
-  our $message = shift;
-  $message =~ s/"//g;
-  print "Content-type: text/javascript; charset=utf-8\n\n";
-  print '{"result":"'.$type.'","message":"'.$message.'"}';
-  exit;
+### 配列の重複削除 --------------------------------------------------
+sub deduplicate {
+  my %seen;
+  return grep { !$seen{$_}++ } @_;
 }
 
+### 外部データ取得 --------------------------------------------------
+sub fetchText {
+  require LWP::UserAgent;
+
+  my $url = shift;
+  my %OPT = @_;
+  my $ua  = LWP::UserAgent->new;
+  my $res = $ua->get($url);
+  if ($res->is_success) {
+    return $res->decoded_content;
+  }
+
+  my $message = '入力されたURLへのアクセスに失敗しました。URLに誤りがあるか、URL先に問題が発生しています。(STATUS CODE:'.$res->code.')';
+  if($OPT{softError}){ return (undef, $message); }
+  else               { error  '400:'.$message; }
+}
+sub fetchJson {
+  my $url = shift;
+  my %OPT = @_;
+  my ($text, $message) = fetchText($url, %OPT);
+
+  $text = utf8::is_utf8($text) ? encode('utf8', (join '', $text)) : $text;
+
+  my $data = eval { decode_json($text) };
+  unless($data) {
+    $message //= 'JSONデータが取得できませんでした。URLに誤りがあるか、URL先に問題が発生しています。';
+    if($OPT{softError}){ return (_error => $message); }
+    else               { error  '400:'.$message; }
+  }
+
+  return %{ $data };
+}
+
+### シートデータインポート --------------------------------------------------
+sub importSheetData {
+  my $setUrl = shift;
+  my %OPT = @_;
+  my $softError = $OPT{softError};
+  my $file;
+
+  my $returnError = sub {
+    my $message = shift;
+    if($softError){
+      $message =~ s/^[0-9]{3}://;
+      return (_error => $message);
+    }
+    error $message;
+  };
+  my $fetchJson = sub {
+    my $url = shift;
+    if($softError){
+      my %result = fetchJson($url, softError => 1);
+      return $returnError->("400:$result{_error}") if $result{_error};
+      return %result;
+    }
+    return fetchJson($url);
+  };
+
+  ## キャラクター保管所
+  if($setUrl =~ m"(^https?://charasheet\.vampire-blood\.net/m?[a-f0-9]+)"){
+    if(defined &convertHokanjoToYtsheet){
+      my %in = $fetchJson->($1.'.js');
+      return %in if $in{_error};
+      return convertHokanjoToYtsheet(\%in);
+    }
+    else {
+      return $returnError->("400:このゲームではキャラクター保管所からのコンバートに対応していません。");
+    }
+  }
+  ## キャラクターシート倉庫
+  my $soukoPath = $OPT{soukoPath} ? quotemeta($OPT{soukoPath}) : '[^/]+';
+  if($setUrl =~ m"^https?://character-sheets\.appspot\.com/${soukoPath}/edit.html"){
+    if(defined &convertSoukoToYtsheet){
+      $setUrl =~ s/edit\.html\?/display\?ajax=1&/;
+      my %in = $fetchJson->($setUrl);
+      return %in if $in{_error};
+      $in{'image_url'} = $setUrl =~ s/display\?ajax=1&/image?/r;
+      return convertSoukoToYtsheet(\%in);
+    }
+    else {
+      return $returnError->("400:このゲームではキャラクターシート倉庫からのコンバートに対応していません。");
+    }
+  }
+  ## 旧ゆとシート
+  {
+    foreach my $url (keys %set::convert_url){
+      if($setUrl =~ s"^${url}data/(.*?).html"$1"){
+        open my $IN, '<', "$set::convert_url{$url}data/${setUrl}.cgi" or return $returnError->('500:旧ゆとシートのデータが開けませんでした。');
+        my %pc;
+        $_ =~ s/^(.+?)<>(.*)\n$/$pc{$1} = $2;/egi while <$IN>;
+        close($IN);
+
+        return convert1to2(\%pc);
+      }
+    }
+  }
+  ## 同じゆとシートⅡ
+  my $self = CGI->new()->url;
+  if($setUrl =~ m"^$self\?id=(.+?)(?:$|&)"){
+    my $id = $1;
+    my ($file, $type, $author) = findSheet($id);
+    unless($file){
+      return $returnError->('404:コンバート元のゆとシートⅡのデータが見つかりませんでした。URLに誤りがあるか、データが削除されている可能性があります。');
+    }
+    my %pc;
+    my $dataDir = $OPT{dataDir} || $type ? $set::lib_type{$type}{dataDir} : $set::char_dir;
+    my @lines = readSheetFileLines($dataDir, $file, 'data.cgi');
+    unless(@lines){
+      return $returnError->('500:コンバート元のゆとシートⅡのデータが開けませんでした。');
+    }
+    foreach (@lines){
+      chomp;
+      my ($key, $value) = split(/<>/, $_, 2);
+      $pc{$key} = $value;
+    }
+
+    unless($OPT{skipPermission}){
+      my $LOGIN_ID = check;
+      unless(
+        (!$pc{forbidden}) ||
+        ($pc{protect} eq 'none') ||
+        ($author && ($author eq $LOGIN_ID || $set::masterid eq $LOGIN_ID))
+      ){
+        return $returnError->('403:閲覧・編集に制限がかかっており、コンバートできないデータです。');
+      }
+    }
+    my $mainSuffix = imageSuffix($pc{mainImage});
+    foreach my $imageNo (1 .. ($set::image_maxcount || 1)){
+      my $suffix = imageSuffix($imageNo);
+      next unless $pc{"image$suffix"};
+      $pc{"imageURL$suffix"} = ($OPT{imageUrlBase} || $self).qq|?id=$id&mode=image&imageNo=$imageNo&cache=$pc{"imageUpdate$suffix"}|;
+      if($OPT{includeImage}){
+        my $imgName = qq|image$suffix.$pc{"image$suffix"}|;
+        my $imagePath = qq|${dataDir}${file}/$imgName|;
+        $pc{"imagePath$suffix"} = $imagePath if -f $imagePath;
+        if($::in{mode} eq 'download'){
+          $pc{"imageData$suffix"} = readSheetFileBinary($dataDir, $file, $imgName);
+        }
+      }
+    }
+    $pc{convertSource} = '同じゆとシートⅡ';
+    return %pc;
+  }
+  ## 別のゆとシートⅡ
+  {
+    my %pc = $fetchJson->($setUrl.'&mode=json');
+    return %pc if $pc{_error};
+    $_ = escapeThanSign($_) foreach values %pc;
+    if($pc{result} eq 'OK'){
+      our $base_url = $setUrl;
+      $base_url =~ s|/[^/]+?$|/|;
+      $pc{convertSource} = '別のゆとシートⅡ';
+      return %pc;
+    }
+    elsif($pc{result}) {
+      return $returnError->("400:コンバート元のゆとシートⅡでエラーがありました。<br>> $pc{result}:$pc{message}");
+    }
+    elsif($pc{_error}) {
+      return %pc;
+    }
+  }
+
+  return $returnError->('400:有効なデータが取得できませんでした。');
+}
+
+### .htaccess作成 --------------------------------------------------
+sub ensureHtaccessDenied {
+  my ($dir) = @_;
+
+  my $path = "$dir/.htaccess";
+  my $content = "Require all denied\n";
+
+  if (-e $path) {
+    open(my $FH, '<', $path) or error "500:Cannot read $path: $!";
+
+    local $/;
+    my $current = <$FH>;
+
+    close($FH);
+
+    return 1 if $current =~ /^\s*Require\s+all\s+denied\s*$/m;
+
+    error "500:$path already exists, but does not contain 'Require all denied'";
+  }
+
+  sysopen(my $FH, $path, O_WRONLY | O_CREAT | O_EXCL, 0644) or error "500:Cannot create $path: $!";
+  print $FH $content;
+  close($FH);
+
+  return 1;
+}
+
+### テキスト整形ルール --------------------------------------------------
+sub renderTextRule {
+  my $type = $::pc{type} // $::in{type} // '';
+  return <<~"HTML";
+    <p>以下の書式で記入することで、テキスト装飾・整形が行なえます。</p>
+    <section>
+      <dl><dt>太字  <dd><code>''テキスト''</code>：<b>テキスト</b></dl>
+      <dl><dt>斜体  <dd><code>'''テキスト'''</code>：<span class="oblique">テキスト</span></dl>
+      <dl><dt>打消線<dd><code>%%テキスト%%</code>：<span class="strike">テキスト</span></dl>
+      <dl><dt>下線  <dd><code>__テキスト__</code>：<span class="underline">テキスト</span></dl>
+      <dl><dt>ルビ  <dd><code>|テキスト《てきすと》</code>：<ruby>テキスト<rt>てきすと</rt></ruby></dl>
+      <dl><dt>傍点  <dd><code>《《テキスト》》</code>：<span class="text-em">テキスト</span></dl>
+      <dl><dt>透明  <dd><code>{{テキスト}}</code>：<span class="transparent">テキスト</span>（ドラッグ反転で見える）</dl>
+      <dl><dt>リンク<dd><code>[[テキスト>URL]]</code></dl>
+      <dl><dt>他のシートへのリンク<dd><code>[テキスト#シートのID]</code></dl>
+      @{[ defined(&renderAddTextRule) ? &renderAddTextRule() : '' ]}
+    </section>
+    <hr>
+    <section class="multiline-rule">
+      <p>
+        ※以下は一部の複数行の欄でのみ有効です。
+        @{[ $::multilineTargets{$type} ? "<br>（有効な欄：$::multilineTargets{$type}）<br>" : '' ]}
+      </p>
+      <dl><dt>大見出し<dd>行頭に<code>*</code>：1行目に記述すると項目の見出しを差し替え</dl>
+      <dl><dt>中見出し<dd>行頭に<code>**</code></dl>
+      <dl><dt>小見出し<dd>行頭に<code>***</code></dl>
+      <dl><dt>左寄せ  <dd>行頭に<code>LEFT:</code>：以降のテキストがすべて左寄せになります。</dl>
+      <dl><dt>中央寄せ<dd>行頭に<code>CENTER:</code>：以降のテキストがすべて中央寄せになります。</dl>
+      <dl><dt>右寄せ  <dd>行頭に<code>RIGHT:</code>：以降のテキストがすべて右寄せになります。</dl>
+      <dl><dt>横罫線（直線）<dd><code>----</code>（4つ以上のハイフン）</dl>
+      <dl><dt>横罫線（点線）<dd><code> * * * *</code>（4つ以上の「スペース＋アスタリスク」）</dl>
+      <dl><dt>横罫線（破線）<dd><code> - - - -</code>（4つ以上の「スペース＋ハイフン」）</dl>
+      <dl><dt>表組み<dd>
+        <code>|テキスト|テキスト|</code>：表組み（テーブル）を作成します。<br>
+        <code>|~テキスト|</code>のようにセル頭に<code>~</code>で見出しセルになります。<br>
+        <code>|&gt;|テキスト|</code>のように<code>&gt;</code>単独で右のセルと結合します。<br>
+        <code>|CENTER: テキスト|</code>のようにセル頭に<code>CENTER:</code>で中央揃えになります。<br>
+        <code>|RIGHT: テキスト|</code>のようにセル頭に<code>RIGHT:</code>で右揃えになります。<br>
+        <code>|NOWRAP: テキスト|</code>のようにセル頭に<code>NOWRAP:</code>でそのセル内で改行しなくなります<br>
+        <code>|CENTER:5em|RIGHT:10em|c</code>のように行末に<code>c</code>をつけると書式指定行となり、その列の文字揃えや幅をまとめて指定できます。<br>
+        ※書式指定行では、通常の文字列は無効になります。<br>
+        ※指定できる幅の単位は、<code>em</code>（1em=全角1文字）および<code>%</code>が有効です。<br>
+        ※指定できる幅の上限は、それぞれ<code>20em</code>と<code>100%</code>です。<br>
+      </dl>
+      <dl><dt>定義リスト<dd>
+        <code>:項目名|説明文</code><br>
+        <code>:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|説明文2行目</code> 項目名を記入しないか、半角スペースで埋めると上と結合します。
+      </dl>
+      <dl><dt>折り畳み<dd>
+        行頭に<code>[>]項目名</code>：以降のテキストがすべて折り畳みになります。<br>
+        項目名を省略すると、自動的に「詳細」になります。<br>
+        <code>&gt;</code>の代わりに<code>V</code><code>v</code><code>Ｖ</code><code>ｖ</code>のいずれかの文字をもちいると、デフォルトで展開状態となります（例： <code>[v]項目名</code>）。
+      </dl>
+      <dl><dt>折り畳み終了<dd>
+        行頭に<code>[---]</code>：（ハイフンは3つ以上任意）<br>
+        省略すると、以後のテキストが全て折りたたまれます。
+      </dl>
+      <dl><dt>コメントアウト<dd>行頭に<code>//</code>：記述した行を非表示にします。</dl>
+    </section>
+  HTML
+}
+
+### HTMLテンプレート出力 --------------------------------------------------
+sub outputTemplate {
+  my ($tmpl) = @_;
+
+  my $out = $tmpl->output;
+  if (
+    eval { $tmpl->isa('HTML::Template::Pro') }
+    && !Encode::is_utf8($out)
+  ) {
+    $out = Encode::decode('UTF-8', $out);
+  }
+  return $out;
+}
 ### アップデート・コンバート --------------------------------------------------
 ## バックアップ形式変更
-sub logFileCheck {
+sub checkLogFile {
   my $dir = shift;
   my $mode = shift;
   if (-d "${dir}/backup") { logFileUpdate($dir,$mode); }
@@ -845,7 +1567,7 @@ sub logFileUpdate {
   my $lately_term    = 60*60*24;
   my $interval_long  = 60 * ($set::log_interval_long  || 60);
   my $interval_short = 60 * ($set::log_interval_short || 15);
-  
+
   require Time::Local;
 
   my %log_name;
@@ -873,10 +1595,8 @@ sub logFileUpdate {
 
   my $latest_epoc = (stat("${dir}/data.cgi"))[9];
 
-  sysopen (my $OUT, "${dir}/logs.cgi", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-  flock($OUT, 2);
-  sysopen (my $BUL, "${dir}/log-list.cgi", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-  flock($BUL, 2);
+  my $logs_content = '';
+  my $log_list_content = '';
   my $before_saved = 0;
   foreach my $i (0 .. $#log_list){
     my $date = $log_list[$i]{date};
@@ -890,21 +1610,37 @@ sub logFileUpdate {
        $epoc - $before_saved >= $interval_long)
     ){
       $before_saved = $epoc;
-      print $OUT "=${date}=\n";
-      print $BUL "${date}<>$epoc<>$log_name{$date}\n";
+      $logs_content .= "=${date}=\n";
+      $log_list_content .= "${date}<>$epoc<>$log_name{$date}\n";
       open(my $IN,"${dir}/backup/${date}.cgi") or die;
-      while (my $line = <$IN>){ print $OUT $line; };
+      while (my $line = <$IN>){ $logs_content .= $line; };
       close($IN);
     }
     unlink("${dir}/backup/${date}.cgi");
   }
-  print $BUL "latest<>$latest_epoc<>\n";
-  close($OUT);
-  close($BUL);
+  $log_list_content .= "latest<>$latest_epoc<>\n";
+  if($dir =~ m|^(.*/)([^/]+)$|){
+    my ($sheetDir, $sheetFile) = ($1, $2);
+    my %archive = (
+      'data.cgi'     => readSheetFile($sheetDir, $sheetFile, 'data.cgi') // '',
+      'logs.cgi'     => $logs_content,
+      'log-list.cgi' => $log_list_content,
+    );
+    foreach my $ext (qw(png jpg jpeg gif webp)){
+      my $image = readSheetFileBinary($sheetDir, $sheetFile, "image.$ext");
+      $archive{"image.$ext"} = $image if defined $image;
+    }
+    saveSheetArchive($sheetDir, $sheetFile, \%archive);
+  }
   rmdir("${dir}/backup");
   unlink("${dir}/buname.cgi");
   if($mode eq 'view'){ print "Location:./?id=$::in{id}\n\n"; }
 }
 
+### 画像接尾辞 --------------------------------------------------
+sub imageSuffix {
+  my $imageNo = shift;
+  return $imageNo == 1 ? '' : $imageNo;
+}
 
 1;

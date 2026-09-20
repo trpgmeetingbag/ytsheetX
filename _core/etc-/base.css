@@ -1,0 +1,524 @@
+@charset "utf-8";
+@import url('https://fonts.googleapis.com/css?family=Muli');
+
+
+
+* {
+  margin: 0px;
+  padding: 0px;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100vh;
+  font-size: 62.5%;
+}
+
+body {
+  font-family: 'Muli',"BIZ UDゴシック","BIZ UDGothic","ヒラギノ角ゴ ProN","Hiragino Kaku Gothic ProN","HiraKakuProN-W3","メイリオ","Meiryo",sans-serif;
+  font-size  : 1.4rem;
+  line-height: 1.5;
+}
+
+table, tr, th, td {
+  border-width: 0;
+  border-collapse: collapse;
+}
+td {
+  empty-cells: show;
+}
+table {
+  border: .1rem solid #abc;
+}
+th,
+td {
+  border: .1rem solid #abc;
+}
+
+dt {
+  font-weight: bold;
+}
+
+ul,ol {
+  list-style-type: none;
+}
+ul.list {
+  margin: 1rem 3rem;
+}
+ul.list > li {
+  list-style-type: disc;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:link    { color: #78d; }
+a:visited { color: #678; }
+a:hover   { color: #000; }
+a:hover img { mix-blend-mode: hard-light; }
+
+main p a {
+  background: linear-gradient(to top, #cef .3rem, transparent .3rem, transparent);
+}
+
+body {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(auto, 900px) minmax(180px, 1fr);
+  position: relative;
+  min-height: 100vh;
+  background-image: url(./back-pattern.png);
+  background-attachment: fixed;
+  background-color: #ffffff;
+  color: #000;
+  padding-bottom: 0 !important;
+}
+body.wide {
+  grid-template-columns: minmax(10px, 1fr) minmax(auto, 1600px) minmax(10px, 1fr);
+}
+
+header {
+  grid-column: 1 / 4;
+  height: 8rem;
+  position: relative;
+  padding: 0px 10px;
+  border-bottom: 1px solid #aaa;
+  background-color: #e78;
+  text-align: center;
+  text-shadow: 2px 2px 0px #812, 2px -2px #812, -2px 2px 0px #812, -2px -2px 0px #812, 2px 0 0px #812, -2px 0 0px #812, 0 2px 0px #812, 0 -2px 0px #812;
+  
+  z-index: 100;
+}
+
+header h1 {
+  position: relative;
+  font-size: 5rem;
+  line-height: 8rem;
+}
+header a {
+  position: relative;
+  color: #fff !important;
+  z-index: 101;
+}
+
+main {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  min-height: calc(100vh - 14rem);
+  margin: 0;
+  padding: 1rem;
+  border-width: 0px 3px;
+  border-style: double;
+  border-color: #aaa;
+  background: rgba(255,255,255,0.8);
+}
+
+article {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+* + article{
+  border-width: 1px 0 0;
+  border-style: solid;
+}
+article h1 {
+  font-size: 2.5rem;
+}
+
+footer {
+  grid-column: 1 / 4;
+  height: 6rem;
+  margin-top: auto;
+  padding: 15px 10px 175px;
+  border-top: 1px solid #aaa;
+  background-color: #345;
+  text-align: center;
+  font-size: 1.6rem;
+}
+footer a {
+  margin-right: 1em;
+  color: #ddf !important;
+}
+
+header,
+footer {
+  color: #fff;
+}
+header a:hover,
+footer a:hover {
+  opacity: 0.7;
+}
+footer span {
+  display: inline-block;
+}
+footer .copyright {
+  margin-top: 0.5em;
+}
+
+* { border-color: #999; }
+
+article > section,
+article > details {
+  margin: 1.5rem 0;
+  padding: .5rem;
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(205,225,245,0.5);
+  background: linear-gradient(to bottom, rgba(205,225,245,0.5), rgba(255,255,255,0.5) 10rem);
+}
+article > section > details + section,
+article > section > section + section,
+article > section > :is(p,ul) + section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: rgba(205,225,245,0.5);
+}
+summary {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+hr {
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: rgba(205,225,245,0.5);
+}
+
+main details > p,
+main section > p {
+  margin: 1rem;
+}
+main section table {
+  margin: 1rem;
+}
+main section table th,
+main section table td {
+  padding: .3rem .5rem;
+}
+
+input:is([type=text],[type=number],[type=url],[type=submit]),
+select {
+  border-radius: 4px;
+}
+input:is([type=text],[type=number],[type=url],[type=submit]){
+  margin: 0 1px;
+  padding: 1px;
+  border: 1px solid #789;
+}
+input[type=number]{
+  text-align:center
+}
+input[type=submit]{
+  padding: 2px;
+  line-height: 1;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+ul.items {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows   : auto;
+  justify-content: space-between;
+}
+ul.items li {
+  position: relative;
+  flex-grow: 1;
+  display: grid;
+  align-items: center;
+  text-align: center;
+  margin: 0.5em;
+  height: 5em;
+  border-radius: 1rem;
+  background-color: #ddd;
+  box-shadow: 0px 0px 0px 1px #ccc inset, 0px 0px 20px 0px rgba(255,255,255,0.8) inset;
+  font-weight: bold;
+  font-family: 'Muli',"BIZ UDPゴシック","BIZ UDPGothic","ヒラギノ丸ゴ ProN","Hiragino Maru Gothic ProN","	Hiragino Sans","Meiryo UI",sans-serif;
+}
+ul.items li.image a {
+  background-repeat: no-repeat;
+}
+ul.items li.image.sw2 a {
+  background-image: url(./back-first.png);
+  background-position: bottom -15px right -10px;
+  background-size: auto 150%;
+}
+ul.items li.image.sw0 a {
+  background-image: url(./back-first0.png);
+  background-position: bottom -15px right -10px;
+  background-size: auto 150%;
+}
+ul.items li.image.gs a {
+  background-image: url(./back-gs.png);
+  background-position: bottom -15px right -10px;
+  background-size: auto 150%;
+}
+ul.items li.image.dx3 a {
+  background-image: url(./back-xx.png);
+  background-position: bottom -28px right -10px;
+  background-size: auto 160%;
+}
+ul.items li.image.ar2 a {
+  background-image: url(./back-wheel.png);
+  background-position: bottom -40px right -30px;
+  background-size: auto 200%;
+}
+ul.items li.image.gc a {
+  background-image: url(./back-crest.png);
+  background-position: bottom -40px right -30px;
+  background-size: auto 200%;
+}
+ul.items li.image.vc a {
+  background-image: url(./back-circle.png);
+  background-position: bottom -45px right -40px;
+  background-size: auto 200%;
+}
+ul.items li.image.blp a {
+  background-image: url(./back-moon.png);
+  background-position: bottom -45px right -30px;
+  background-size: auto 250%;
+}
+ul.items li.image.kiz a {
+  background-image: url(./back-kiz.png);
+  background-position: bottom -10px right 0px;
+  background-size: auto 220%;
+}
+ul.items li.image.ms a {
+  background-image: url(./back-scramble.png);
+  background-position: bottom -45px right -40px;
+  background-size: auto 160%;
+}
+ul.items li.new:after,
+ul.items li.update:after,
+ul.items li.old:after {
+  position: absolute;
+  top: -1rem;
+  left: -0.5rem;
+  font-size: 120%;
+  font-weight: bold;
+  font-style: oblique;
+  color: #f67;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  pointer-events: none;
+}
+ul.items li.new:after{ content: "New!"; }
+ul.items li.update:after{ content: "Update!"; }
+ul.items li.old:after{ content: "旧作"; }
+ul.items li[data-date]:before {
+  content: attr(data-date);
+  position: absolute;
+  bottom: -1rem;
+  right: -0.5rem;
+  font-size: 90%;
+  font-weight: bold;
+  font-style: oblique;
+  color: #f67;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  pointer-events: none;
+}
+ul.items li a {
+  display: grid;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0px 0px 0px 1px #acf inset, 0px 0px 20px 0px #cef inset;
+  color: #000;
+  text-shadow: 0 0 3px #fff, 0 0 5px #fff;
+}
+ul.items li.old a {
+  background: #eee;
+}
+ul.items li.old::before,
+ul.items li.old::after {
+  color: #a78;
+}
+ul.items li a:hover {
+  background-color: #dff;
+}
+ul.items li ruby {
+  line-height: 2;
+}
+
+dl.history {
+  position: relative;
+  margin: 0 1rem;
+}
+dl.history dd:before {
+  content: "- "
+}
+/* jsonKeyList */
+.table-jsonkeylist thead tr {
+  background-color: hsla(200,10%,50%,0.1);
+}
+.table-jsonkeylist thead th,
+.table-jsonkeylist tbody th[colspan] {
+  background-color: hsla(200,10%,50%,0.1);
+  text-align: left;
+}
+.table-jsonkeylist tbody th[colspan]::before {
+  content: "◆";
+}
+.table-jsonkeylist tbody th:not([colspan]) {
+  font-family: "BIZ UDGothic", monospace;
+}
+.table-jsonkeylist tbody th i {
+  font-style: normal;
+  color: #ff7700;
+}
+/* haveList */
+.have-list {
+  margin: -.5rem;
+}
+.have-list > li {
+  padding: 0.5em;
+  font-weight: bold;
+}
+.have-list > li::before {
+  content: "◆ ";
+}
+.have-list > li:not(:last-child) {
+  border-bottom: .1rem solid #abc;
+}
+.have-list > li ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding-left: 1em;
+}
+.have-list > li ul li {
+  list-style-type: disc;
+  margin-left: 1em;
+  padding-right: 1em;
+  font-weight: normal;
+}
+@media screen and (max-width:1024px){
+  .have-list > li ul {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* // SideBar
+---------------------------------------------------------------------------------------------------- */
+aside[id|="sidebar"] {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+  line-height: 1;
+}
+body.wide aside[id|="sidebar"] {
+  display: none;
+}
+aside[id|="sidebar"] > section {
+  max-width: 162px;
+  padding: 1rem;
+  border: 1px solid #aaa;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.8);
+  text-align: center;
+}
+#sidebar-left > section {
+  margin-left: auto;
+}
+aside[id|="sidebar"] > section img {
+  width: 100%;
+}
+aside[id|="sidebar"] > section a.fades {
+  display: inline-flex;
+}
+aside[id|="sidebar"] > section a.fades img {
+  animation-name: fade_anime1;
+  animation-duration: 10s;
+  animation-iteration-count: infinite;
+  opacity: 1;
+  z-index: 2;
+}
+aside[id|="sidebar"] > section a.fades img + img {
+  margin-left: -100%;
+  animation-delay: 5s;
+  opacity: 1;
+  z-index: 1;
+}
+@keyframes fade_anime1 {
+   0% { opacity: 1; }
+  45% { opacity: 1; }
+  50% { opacity: 0; }
+  95% { opacity: 0; }
+ 100% { opacity: 1; }
+}
+.amazon {
+  display: flex;
+  flex-wrap: wrap;
+}
+.amazon a {
+  padding: .5rem 0;
+}
+.amazon .grid {
+  display: grid;
+  padding: .5rem 0 .2rem;
+}
+.amazon .grid a {
+  display: flex;
+  padding: 0;
+}
+.amazon .grid + i {
+  display: block;
+  width: 100%;
+  margin: 0 0 .5rem;
+}
+
+@media screen and (max-width:1024px){
+  ul.items {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+@media screen and (max-width:900px){
+  ul.items {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media screen and (max-width:860px){
+  main {
+    grid-column: 2 / 4;
+    grid-row: 2 / 4;
+  }
+}
+@media screen and (max-width:750px){
+  header {
+    height: 12vw;
+  }
+  header h1 {
+    font-size: 7vw;
+    line-height: 12vw;
+  }
+  footer {
+    font-size: 2.5vw;
+  }
+  body {
+    grid-template-columns: 1fr !important;
+  }
+  main {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

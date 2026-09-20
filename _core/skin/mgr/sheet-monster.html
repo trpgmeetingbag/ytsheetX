@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+<TMPL_INCLUDE NAME="../_common/sheet-head.html">
+</head>
+<body id="monster" <TMPL_IF mount>class="mount"</TMPL_IF> data-system="<TMPL_IF modeZero>sw2.0<TMPL_ELSE>sw2.5</TMPL_IF>">
+  <header>
+    <h1><a href="./?type=m"><TMPL_VAR title></a></h1>
+    <nav>
+      <TMPL_INCLUDE NAME="../_common/sheet-menu.html">
+    </nav>
+    
+  </header>
+  <div class="header-back-name"><b><TMPL_VAR titleName> - <TMPL_VAR title></b></div>
+  
+  <TMPL_IF error>
+  <aside id="error">
+    <p>
+      <TMPL_VAR error>
+    </p>
+  </aside>
+  </TMPL_IF>
+  
+  <TMPL_UNLESS modeDownload>
+    <TMPL_UNLESS forbiddenMode>
+      <aside id="loglist" class="float-box">
+        <h2>過去ログ（バックアップ）</h2>
+        <ul>
+          <TMPL_LOOP LogList><li class="<TMPL_VAR SELECTED>"><a href="?id=<TMPL_VAR id><TMPL_VAR URL>"><TMPL_VAR DATE></a></TMPL_LOOP>
+        </ul>
+        <TMPL_IF viewLogNaming><details id="log-naming">
+          <summary>閲覧中のログ<TMPL_IF selectedLogName>の名前をつけなおす<TMPL_ELSE>に名前をつける</TMPL_IF></summary>
+          <form id="log-naming-form" method="post" action="./">
+            <input type="hidden" name="mode" value="bu-naming">
+            <input type="hidden" name="id" value="<TMPL_VAR id>">
+            <input type="hidden" name="date" value="<TMPL_VAR logId>">
+            <dl>
+              <dt>名前<dd><input type="text" name="log-name" value="<TMPL_VAR selectedLogName>">
+              <TMPL_IF reqdPassword><dt>パスワード<dd><input type="password" name="pass"></TMPL_IF>
+              <dd><input type="submit" value="命名">
+            </dl>
+          </form>
+        </details></TMPL_IF>
+      </aside>
+
+      <aside id="downloadlist" class="float-box">
+        <h2>出力</h2>
+        <ul>
+          <li id="downloadlist-udonarium"><a onclick="downloadAsUdonarium();">ユドナリウム用コマデータ<small>(zip形式ファイル)</small></a>
+          <li id="downloadlist-ccfolia"><a onclick="downloadAsCcfolia();">ココフォリア用コマデータ<small>(クリップボードへコピー)</small></a>
+          <li id="downloadlist-text"><a onclick="downloadAsText();">テキスト形式</a>
+          <li id="downloadlist-text-clip"><a onclick="copyTextToClipboard();">テキスト形式<small>(クリップボードへコピー)</small></a>
+          <li id="downloadlist-json"><a onclick="downloadAsJson();">JSON 形式</a>
+          <li id="downloadlist-html"><a onclick="downloadAsHtml();">HTML 形式</a>
+          <li id="downloadlist-zipped"><a onclick="downloadAsFullSet();">ZIP 形式（上記全部入り）</a>
+          <li class="link-tag"><span>ゆとシート内リンク用タグ<br><input type="text" onclick="this.select()" value="[<TMPL_VAR rawName>#<TMPL_VAR id>]"></span>
+        </ul>
+      </aside>
+    </TMPL_UNLESS>
+
+    <form id="login-form" class="float-box" method="post" action="./">
+      <input type="hidden" name="mode" value="edit">
+      <input type="hidden" name="id" value="<TMPL_VAR id>">
+      <input type="password" name="pass" placeholder="password">
+      <input type="hidden" name="log" value="<TMPL_VAR logId>">
+      <input type="submit" value="編集">
+    </form>
+  </TMPL_UNLESS>
+
+  <main>
+    <TMPL_IF forbidden><aside class="information attention">
+      閲覧が制限されているデータです。<br>
+      <TMPL_IF yourAuthor>あなた以外には一部または全てのデータが伏せられます。(<a href="./?id=<TMPL_VAR id>&checkView=1">⇒確認</a>)</TMPL_IF>
+    </aside></TMPL_IF>
+    
+    <TMPL_IF logId><aside class="information log">
+      <h2><TMPL_VAR selectedLogName></h2>
+      <p><TMPL_VAR updateTime> 時点の過去ログ(バックアップ)データです。</p>
+    </aside></TMPL_IF>
+    
+    <TMPL_IF convertMode><aside class="information">
+      <a href="<TMPL_VAR convertUrl>" target="_blank"><TMPL_VAR convertSource></a> のデータを表示しています。
+    </aside></TMPL_IF>
+    
+    <article>
+      <div id="area-name" class="color-set">
+        <!-- ① レベル（base1）の表示 -->
+        <TMPL_UNLESS mount><div class="lv"><TMPL_VAR base1Value></div></TMPL_UNLESS>
+        <div class="name-taxa">
+          <h1><TMPL_IF characterName><TMPL_VAR characterName><TMPL_IF monsterName><small class="monster-name">【<TMPL_VAR monsterName>】</small></TMPL_IF><TMPL_ELSE><TMPL_VAR monsterName></TMPL_IF></h1>
+          <div class="taxa">種別：<TMPL_VAR taxa></div>
+        </div>
+      </div>
+
+      <div id="tags">
+        <TMPL_LOOP Tags><a class="tag" href="./?type=m&tag=<TMPL_VAR URL>"><TMPL_VAR TEXT></a></TMPL_LOOP>
+      </div>
+      
+      <!-- 基本データ群 -->
+      <div class="status srs-status">
+        <!-- 内枠（ここでテキストの広がり幅をコントロールする） -->
+        <div class="srs-status-inner">
+          
+          <!-- ② base-list -->
+          <TMPL_IF BaseItems>
+            <div class="base-status">
+              <TMPL_LOOP BaseItems>
+                <span style="margin-right: 1.5em;"><b><TMPL_VAR NAME></b>：<TMPL_VAR VALUE></span>
+              </TMPL_LOOP>
+            </div>
+          </TMPL_IF>
+
+          <!-- ③ stt-list -->
+          <TMPL_IF SttRows>
+            <div class="stt-list">
+              <TMPL_LOOP SttRows>
+                <div class="status-row col-3">
+                  <TMPL_LOOP Cols>
+                    <span class="status-item">
+                      <TMPL_IF NAME><b><TMPL_VAR NAME></b>：<TMPL_VAR VALUE>／＋<TMPL_VAR BONUS></TMPL_IF>
+                    </span>
+                  </TMPL_LOOP>
+                </div>
+              </TMPL_LOOP>
+            </div>
+          </TMPL_IF>
+
+          <!-- ④ battle-list -->
+          <TMPL_IF BattleRows>
+            <div class="battle-list">
+              <TMPL_LOOP BattleRows>
+                <div class="status-row col-4">
+                  <TMPL_LOOP Cols>
+                    <span class="status-item">
+                      <TMPL_IF NAME><b><TMPL_VAR NAME></b>：<TMPL_VAR VALUE></TMPL_IF>
+                    </span>
+                  </TMPL_LOOP>
+                </div>
+              </TMPL_LOOP>
+            </div>
+          </TMPL_IF>
+
+          <!-- ⑤ defense-list -->
+          <TMPL_IF defenseText>
+            <div class="defense-status">
+              <b>防御修正：</b><TMPL_VAR defenseText>
+            </div>
+          </TMPL_IF>
+          
+        </div>
+      </div>
+
+      <!-- ⑥ 攻撃方法（可変長テーブル） -->
+      <TMPL_IF AttackRows>
+      <table class="status attack-table">
+        <thead>
+          <tr>
+            <TMPL_LOOP AttackHeads>
+              <th><TMPL_VAR NAME></th>
+            </TMPL_LOOP>
+          </tr>
+        </thead>
+        <tbody>
+          <TMPL_LOOP AttackRows>
+            <tr>
+              <TMPL_LOOP Cells>
+                <td><TMPL_VAR VALUE></td>
+              </TMPL_LOOP>
+            </tr>
+          </TMPL_LOOP>
+        </tbody>
+      </table>
+      </TMPL_IF>
+
+      <!-- 特技・特殊能力 -->
+      <section class="box skills">
+        <h2>特技</h2>
+        <TMPL_IF skills><TMPL_VAR skills><TMPL_ELSE><p>なし</p></TMPL_IF>
+      </section>
+
+      <!-- ⑦ 追加テキストエリア（加護など） -->
+      <TMPL_LOOP ExtraSkills>
+        <section class="box skills">
+          <h2><TMPL_VAR NAME></h2>
+          <p><TMPL_VAR TEXT></p>
+        </section>
+      </TMPL_LOOP>
+
+      <TMPL_IF description><section class="box description">
+        <h2><TMPL_IF head_description><TMPL_VAR head_description><TMPL_ELSE>解説</TMPL_IF></h2>
+        <p><TMPL_VAR description></p>
+      </section></TMPL_IF>
+
+      <div id="author">
+        製作者：<TMPL_VAR author>
+      </div>
+      <section class="box chat-palette float-box">
+        <h2>チャットパレット</h2>
+        <div class="chat-palette-menu">
+          <b>使用ツール:</b>
+          <a onclick="chatPaletteSelect('')"       id="cp-switch-ytc">ゆとチャadv.</a>
+          <a onclick="chatPaletteSelect('tekey')"  id="cp-switch-tekey">Tekey</a>
+          <a onclick="chatPaletteSelect('bcdice')" id="cp-switch-bcdice">他BCDice系</a>
+        </div>
+        <textarea id="chatPaletteBox"></textarea>
+      </section>
+    </article>
+  </main>
+  <TMPL_INCLUDE NAME="skin-add/sheet-sidebar.html">
+
+
+      <TMPL_IF SkillSummary>
+        <style>
+    /* サマリが存在する場合のみ、ページ全体の下部にボタン群と同じ高さの余白を確保 */
+    body {
+      padding-bottom: 54px;
+    }
+  </style>
+  <div id="skill-summary-toggle-buttons">
+    <b style="color: #333;">特技サマリ表示</b>
+    <div>
+      <a onclick="toggleSkillSummary('left')" class="summary-toggle-btn" title="左に固定"><span class="material-symbols-outlined">left_panel_open</span></a>
+      <a onclick="toggleSkillSummary('bottom')" class="summary-toggle-btn" title="下に固定"><span class="material-symbols-outlined">bottom_panel_open</span></a>
+      <a onclick="toggleSkillSummary('right')" class="summary-toggle-btn" title="右に固定"><span class="material-symbols-outlined">right_panel_open</span></a>
+      <a onclick="toggleSkillSummary('floating')" class="summary-toggle-btn" title="浮動ウィンドウ"><span class="material-symbols-outlined">layers</span></a>
+    </div>
+  </div>
+  </TMPL_IF>
+  <footer>
+    <TMPL_IF copyright>
+      <p class="notes"><TMPL_VAR copyright>「<TMPL_VAR system>」</p>
+    <TMPL_ELSE>
+      <p class="notes">「<TMPL_VAR system>」</p>
+    </TMPL_IF>
+    
+    <p class="copyright">©<a href="https://yutorize.work">ゆとらいず工房</a>「ゆとシートⅡ」ver.<TMPL_VAR ver> ……の改造品</p>
+  </footer>
+  <!--<footer>
+    <p class="notes">(C)FarEast Amusement Research Co.,Ltd.「メタリックガーディアンRPG」</p>
+    <p class="copyright">©<a href="https://yutorize.work">ゆとらいず工房</a>「ゆとシートⅡ」ver.<TMPL_VAR ver>　……の改造品</p>
+  </footer>-->
+<!-- ① 特技サマリ操作ボタン群 -->
+
+
+
+  <!-- ②＆③ 特技サマリ コンテナと制御スクリプト -->
+  <TMPL_IF SkillSummary>
+
+
+  <div id="skill-summary-container" style="display: none;">
+    <div id="skill-summary-header">
+      <span>特技サマリ</span>
+      <span id="skill-summary-close" class="material-symbols-outlined" aria-hidden="true" onclick="closeSkillSummary()">close</span>
+    </div>
+    
+    <!-- リサイズ用ハンドル -->
+    <div class="resize-handle handle-right"></div>
+    <div class="resize-handle handle-left"></div>
+    <div class="resize-handle handle-top"></div>
+    <div class="resize-handle handle-corner"></div>
+
+    <div id="skill-summary-content">
+      <TMPL_LOOP SkillSummary>
+        <div style="margin-bottom: 0.8em; border-bottom: 1px solid #ccc; padding-bottom: 0.5em;">
+          <span style="font-weight:bold; color: #111;"><TMPL_VAR NAME></span><br><TMPL_VAR TEXT>
+        </div>
+      </TMPL_LOOP>
+    </div>
+  </div>
+  
+  </TMPL_IF>
+
+  <script>
+    const summaryBox = document.getElementById('skill-summary-container');
+    const handles = {
+      right: document.querySelector('.handle-right'),
+      left: document.querySelector('.handle-left'),
+      top: document.querySelector('.handle-top'),
+      corner: document.querySelector('.handle-corner'),
+      header: document.getElementById('skill-summary-header')
+    };
+
+    let currentMode = '';
+    
+    // 寸法と位置の初期値（キャッシュがあれば上書き）
+    let sizes;
+    try {
+      const savedData = localStorage.getItem('srsSummarySizes');
+      sizes = savedData ? JSON.parse(savedData) : null;
+      // 万が一不正なデータ（文字列など）が入っていたらエラーを起こして初期化させる
+      if (typeof sizes !== 'object' || sizes === null) {
+        throw new Error("Invalid cache data");
+      }
+    } catch (e) {
+      sizes = {
+        leftWidth: 300, rightWidth: 300, bottomHeight: 250, 
+        floatWidth: 350, floatHeight: 300, floatTop: 100, floatLeft: 100
+      };
+    }
+
+    function saveSizes() {
+      // 【修正箇所】オブジェクトを直接ではなく、正しく文字列(JSON)に変換して保存する
+      localStorage.setItem('srsSummarySizes', JSON.stringify(sizes));
+    }
+
+    // ① ボタンクリック時の表示切替（トグル）
+    function toggleSkillSummary(mode) {
+      if (currentMode === mode) {
+        closeSkillSummary(); // 同じボタンを押した場合は閉じる
+      } else {
+        openSkillSummary(mode);
+      }
+    }
+
+    function closeSkillSummary() {
+      currentMode = '';
+      summaryBox.style.display = 'none';
+      summaryBox.className = '';
+    }
+
+    function openSkillSummary(mode) {
+      currentMode = mode;
+      summaryBox.style.display = 'flex';
+      summaryBox.className = `mode-${mode}`;
+      
+      // モードに合わせてサイズと位置を適用
+      summaryBox.style.width = ''; summaryBox.style.height = '';
+      summaryBox.style.top = ''; summaryBox.style.left = ''; summaryBox.style.right = ''; summaryBox.style.bottom = '';
+
+      if (mode === 'left') { summaryBox.style.width = sizes.leftWidth + 'px'; }
+      if (mode === 'right') { summaryBox.style.width = sizes.rightWidth + 'px'; }
+      if (mode === 'bottom') { summaryBox.style.height = sizes.bottomHeight + 'px'; }
+      if (mode === 'floating') {
+        summaryBox.style.width = sizes.floatWidth + 'px';
+        summaryBox.style.height = sizes.floatHeight + 'px';
+        summaryBox.style.top = sizes.floatTop + 'px';
+        summaryBox.style.left = sizes.floatLeft + 'px';
+      }
+    }
+
+    // --- ドラッグ操作の実装 ---
+    let isDragging = false;
+    let dragType = ''; 
+    let startX, startY, startW, startH, startTop, startLeft;
+
+    function startDrag(e, type) {
+      if (type === 'move' && currentMode !== 'floating') return; // 移動は浮動モードのみ
+      
+      isDragging = true;
+      dragType = type;
+      startX = e.clientX; startY = e.clientY;
+      startW = summaryBox.offsetWidth; startH = summaryBox.offsetHeight;
+      
+      const rect = summaryBox.getBoundingClientRect();
+      startTop = rect.top; startLeft = rect.left;
+      
+      document.body.style.userSelect = 'none'; // テキスト選択防止
+    }
+
+    // イベントリスナーの登録
+    handles.right.addEventListener('mousedown', (e) => startDrag(e, 'resize-right'));
+    handles.left.addEventListener('mousedown', (e) => startDrag(e, 'resize-left'));
+    handles.top.addEventListener('mousedown', (e) => startDrag(e, 'resize-top'));
+    handles.corner.addEventListener('mousedown', (e) => startDrag(e, 'resize-corner'));
+    handles.header.addEventListener('mousedown', (e) => startDrag(e, 'move'));
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (dragType === 'resize-right') {
+        let w = Math.max(200, startW + dx);
+        summaryBox.style.width = w + 'px';
+        sizes.leftWidth = w;
+      } 
+      else if (dragType === 'resize-left') {
+        let w = Math.max(200, startW - dx);
+        summaryBox.style.width = w + 'px';
+        sizes.rightWidth = w;
+      } 
+      else if (dragType === 'resize-top') {
+        let h = Math.max(100, startH - dy);
+        summaryBox.style.height = h + 'px';
+        sizes.bottomHeight = h;
+      } 
+      else if (dragType === 'resize-corner') {
+        let w = Math.max(250, startW + dx);
+        let h = Math.max(150, startH + dy);
+        summaryBox.style.width = w + 'px';
+        summaryBox.style.height = h + 'px';
+        sizes.floatWidth = w; sizes.floatHeight = h;
+      } 
+      else if (dragType === 'move') {
+        // 画面の右端と下端の限界座標を計算
+        let maxLeft = window.innerWidth - summaryBox.offsetWidth;
+        let maxTop = window.innerHeight - summaryBox.offsetHeight;
+        
+        // 0より小さくならず、限界座標より大きくならないように制限
+        let top = Math.max(0, Math.min(maxTop, startTop + dy));
+        let left = Math.max(0, Math.min(maxLeft, startLeft + dx));
+        
+        summaryBox.style.top = top + 'px';
+        summaryBox.style.left = left + 'px';
+        sizes.floatTop = top; sizes.floatLeft = left;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.userSelect = '';
+        saveSizes(); // ドラッグ終了時に保存
+      }
+    });
+
+
+    // ==========================================
+// ★追加：テキスト出力（クリップボードコピー版）
+// ==========================================
+async function copyTextToClipboard() {
+  // 1. テキストデータの生成
+  const characterDataJson = await getJsonData();
+  const textData = output[`generateCharacterTextOf${generateType}`](characterDataJson);
+
+  // 2. クリップボードへの書き込み
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textData).then(() => {
+      alert('クリップボードにコピーしました。テキストチャットやメモ帳にそのままペーストできます。');
+    }).catch(() => {
+      fallbackCopyText(textData);
+    });
+  } else {
+    fallbackCopyText(textData);
+  }
+}
+
+// 失敗時・旧ブラウザ用の保険処理（既存関数を利用）
+function fallbackCopyText(text) {
+  try {
+    copyToClipboard(text);
+    alert('クリップボードにコピーしました。テキストチャットやメモ帳にそのままペーストできます。');
+  } catch (e) {
+    popTextareaForCopy(text);
+  }
+}
+  </script>
+</body>
+
+
+
+</html>

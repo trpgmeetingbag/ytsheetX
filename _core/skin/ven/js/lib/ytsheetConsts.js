@@ -27,7 +27,7 @@ SOFTWARE.
 var output = output || {};
 output.consts = output.consts || {};
 
-output.consts.dicebot = 'DoubleCross';
+output.consts.dicebot = 'Ventangle';
 
 output.consts.initiative = { label:'行動', name: 'initiativeTotal' };
 
@@ -106,7 +106,7 @@ output.consts.MEMORIES_COLUMNS = {
   note: 'メモ'
 };
 
-output.consts.ven_STATUS = [
+output.consts.VEN_STATUS = [
   {
     name: '肉体',
     column: 'Body',
@@ -139,37 +139,37 @@ output.consts.ven_STATUS = [
       name: '芸術',
       column: 'Art'
     }
-   },// {
-  //   name: '精神',
-  //   column: 'Mind',
-  //   skills: [
-  //     {
-  //       name: 'RC',
-  //       column: 'RC'
-  //     }, {
-  //       name: '意志',
-  //       column: 'Will'
-  //     }
-  //   ],
-  //   extendableSkill: {
-  //     name: '知識',
-  //     column: 'Know'
-  //   }
-  // }, {
-  //   name: '社会',
-  //   column: 'Social',
-  //   skills: [
-  //     {
-  //       name: '交渉',
-  //       column: 'Negotiate'
-  //     }, {
-  //       name: '調達',
-  //       column: 'Procure'
-  //     }
-  //   ],
-  //   extendableSkill: {
-  //     name: '情報',
-  //     column: 'Info'
-  //   }
-  // }
+  }, {
+    name: '精神',
+    column: 'Mind',
+    skills: [
+      {
+        name: 'RC',
+        column: 'RC'
+      }, {
+        name: '意志',
+        column: 'Will'
+      }
+    ],
+    extendableSkill: {
+      name: '知識',
+      column: 'Know'
+    }
+  }, {
+    name: '社会',
+    column: 'Social',
+    skills: [
+      {
+        name: '交渉',
+        column: 'Negotiate'
+      }, {
+        name: '調達',
+        column: 'Procure'
+      }
+    ],
+    extendableSkill: {
+      name: '情報',
+      column: 'Info'
+    }
+  }
 ];

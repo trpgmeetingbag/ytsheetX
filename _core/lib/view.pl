@@ -3,23 +3,25 @@ use strict;
 #use warnings;
 use utf8;
 use open ":utf8";
+use JSON::PP;
+use HTML::Template;
 
 our $LOGIN_ID = check;
 
 our $file;
 my $type;
 my $author;
-our %conv_data = ();
+our %convData = ();
 
 $::in{log} ||= $::in{backup};
 
 if($::in{id}){
-  ($file, $type, $author) = getfile_open($::in{id});
+  ($file, $type, $author) = findSheet($::in{id});
 }
 elsif($::in{url}){
-  require $set::lib_convert;
-  %conv_data = dataConvert($::in{url});
-  $type = $conv_data{type};
+  eval { require $set::lib_convert; };
+  %convData = importSheetData($::in{url});
+  $type = $convData{type};
 }
 
 changeFileByType($type);
@@ -28,49 +30,311 @@ changeFileByType($type);
 ### 各システム別処理 --------------------------------------------------
 require $set::lib_view_char;
 
+### ベース処理 --------------------------------------------------
+our $selectedLogName;
+sub setupViewBase {
+  my (%ARGS) = @_;
+
+  my %pc = loadSheetData();
+  my $SHEET = setupViewTemplate(
+    generateType      => $ARGS{generateType},
+    defaultPieceImage => $ARGS{defaultPieceImage},
+  );
+  ## データアップデート
+  if($pc{ver} && $ARGS{updateSub} && ref $ARGS{updateSub} eq 'CODE'){
+    %pc = $ARGS{updateSub}->(\%pc);
+  }
+  ## データマスク
+  if($pc{forbidden} && !$pc{yourAuthor}){
+    my @keepKeys = ('playerName','author','protect','forbidden','convertSource');
+    push(@keepKeys, @{ $ARGS{maskSkipKeys} }) if $ARGS{maskSkipKeys};
+    my %keep;
+    $keep{$_} = $pc{$_} foreach(@keepKeys);
+    if($keep{forbidden} eq 'all'){ %pc = (); }
+    maskPcData(\%pc, $keep{forbidden});
+    $pc{$_} = $keep{$_} foreach(@keepKeys);
+    $pc{forbiddenMode} = 1;
+  }
+  ## 名前処理
+  if(my $callback = $ARGS{nameSub}){
+    $callback->(\%pc);
+  }
+  elsif($ARGS{nameKeys}){
+    foreach my $key (@{ $ARGS{nameKeys} }){
+      if(defined $pc{$key} && $pc{$key} ne ''){
+        $pc{encodedNameLetter} .= $pc{$key}.$pc{"${key}Ruby"};
+        $pc{titleName} = $pc{$key} if !$pc{titleName};
+      }
+    }
+  }
+  else {
+    $pc{titleName} = $pc{characterName} || ($pc{aka} ? qq|“$pc{aka}”| : '');
+    $pc{encodedNameLetter} = "$pc{characterName}$pc{characterNameRuby}";
+    $pc{encodedNameLetter} .= qq|“$pc{aka}$pc{akaRuby}”| if $pc{aka};
+  }
+  # ゆとシ内リンクタグ用
+  $SHEET->param(rawName => $pc{titleName});
+  # タイトルバー
+  if($pc{forbidden} eq 'all' && $pc{forbiddenMode}){
+    $SHEET->param(titleName => '非公開データ');
+  }
+  else {
+    $SHEET->param(titleName =>
+      (removeTags removeRuby unescapeTags $pc{titleName})
+      . ($::in{log} ? " 【". ($selectedLogName || $pc{updateTime}) ."】" : '')
+    );
+  }
+  delete $pc{titleName};
+  # フォント変更対象文字列
+  {
+    my $letters = removeTags unescapeTags $pc{encodedNameLetter};
+    my %seen;
+    $letters =~ s/(.)/$seen{$1}++ ? '' : $1/ge; #重複文字削除
+    $SHEET->param(encodedNameLetter => uri_escape_utf8 $letters);
+  }
+  delete $pc{encodedNameLetter};
+
+  ## タグ置換前にやっておきたいその他の処理
+  if(my $callback = $ARGS{beforeUnescape}){
+    $callback->(\%pc, $SHEET, \%ARGS);
+  }
+  ## タグ置換
+  if($pc{ver}){
+    normalizeViewTags(\%pc,
+      skipKeys      => $ARGS{unescapeSkipKeys},
+      skipRe        => $ARGS{unescapeSkipRe},
+      multilineKeys => $ARGS{unescapeLinesKeys},
+      multilineRe   => $ARGS{unescapeLinesRe},
+      forbiddenMode => $ARGS{forbiddenNoise},
+    );
+  }
+  elsif(my $conv = $ARGS{convertViewMap}){ #ゆとシ以外からのコンバート
+    foreach my $key (@{$conv}){
+      my $in = $key.'View';
+      $pc{$key} = $pc{$in} if defined $pc{$in} && $pc{$in} ne '';
+    }
+  }
+
+  ## シートカラー
+  setColors(\%pc, '');
+  ## フォント
+  setFont(\%pc, '');
+
+  ## %pc => $SHEET
+  while (my ($key, $value) = each(%pc)){
+    $SHEET->param($key => $value);
+  }
+
+  ## ID / URL
+  $SHEET->param(id => $::in{id});
+  if($::in{url}){
+    $SHEET->param(convertMode => 1);
+    $SHEET->param(convertUrl => $::in{url});
+  }
+  $SHEET->param(ogUrl => url().($::in{url} ? "?url=$::in{url}" : "?id=$::in{id}"));
+  ## タグ
+  {
+    my @tags;
+    push(@tags, { URL => uri_escape_utf8($_), TEXT => $_ }) foreach(split(/ /, $pc{tags}));
+    $SHEET->param(Tags => \@tags);
+  }
+  ## 名前出力
+  unless($pc{forbidden} eq 'all' && $pc{forbiddenMode}){
+    foreach my $key (@{ $ARGS{nameKeys} || [qw/characterName aka/] }){
+      $SHEET->param($key => renderCharacterName( $pc{$key},$pc{"${key}Ruby"} ));
+    }
+  }
+  ## プレイヤー名 
+  if($set::playerlist && $set::id_type){
+    my $plId = (split(/-/, $::in{id}))[0];
+    $SHEET->param(playerName => qq|<a href="$set::playerlist?id=$plId">$pc{playerName}</a>|);
+  }
+  ## グループ
+  if($::in{url}){
+    $SHEET->param(group => '');
+  }
+  else {
+    if(!$pc{group}) {
+      $pc{group} = $set::group_default;
+      $SHEET->param(group => $set::group_default);
+    }
+    foreach (@set::groups){
+      if($pc{group} eq @$_[0]){
+        $SHEET->param(groupName => @$_[2]);
+        last;
+      }
+    }
+  }
+  ## セリフ
+  if($pc{words}){
+    my ($words, $x, $y) = renderWords($pc{words},$pc{wordsX},$pc{wordsY});
+    $SHEET->param(words => $words);
+    $SHEET->param(wordsX => $x);
+    $SHEET->param(wordsY => $y);
+  }
+
+  ## バックアップ
+  if($::in{id}){
+    ($selectedLogName, my $list) = getLogList($set::char_dir, $main::file);
+    $SHEET->param(LogList => $list);
+    $SHEET->param(selectedLogName => $selectedLogName);
+    if($pc{yourAuthor} || $pc{protect} eq 'password'){
+      $SHEET->param(viewLogNaming => 1);
+    }
+  }
+  ## robots
+  if($pc{hide} || $main::login_error || ($::in{log} && !$selectedLogName)){
+    $SHEET->param(noindex => 1);
+  }
+  
+  ## パートナーの名前
+  foreach my $num (1 .. $ARGS{partnerMax}){
+    next unless $pc{"partner${num}Name"};
+    $SHEET->param("partner${num}Name" => renderCharacterName( $pc{"partner${num}Name"},$pc{"partner${num}NameRuby"} ));
+    $SHEET->param("p${num}_encodedNameLetter" => uri_escape_utf8 removeTags $pc{"partner${num}Name"}.$pc{"partner${num}NameRuby"});
+  }
+
+  return \%pc, $SHEET;
+}
+sub normalizeViewTags {
+  my ($pc, %OPT) = @_;
+  my %skip      = map { $_ => 1 } @{ $OPT{skipKeys}      // [] };
+  my %multiline = map { $_ => 1 } @{ $OPT{multilineKeys} // [] };
+  $skip{tags} = 1; # タグは置換しない
+
+  foreach my $key (keys %{$pc}) {
+    next if $skip{$key};
+    next if ($OPT{skipRe} && $key =~ $OPT{skipRe});
+    next if $key =~ /URL$/i; # URLは置換しない
+    next if $key =~ /^image/; # 画像関連は置換しない
+    next if $key =~ /^(?:p[0-9]+)?_error$/; # エラーメッセージは置換しない
+
+    if($multiline{$key} || ($OPT{multilineRe} && $key =~ $OPT{multilineRe})){
+      $pc->{$key} = unescapeTagsLines($pc->{$key});
+      $pc->{$key} =~ s{^(?:</p>)?<h2>(.*?)</h2>}{$pc->{"head_$key"} = $1; ''}e;
+    }
+    $pc->{$key} = unescapeTags($pc->{$key});
+
+    if($OPT{forbiddenMode} && $pc->{forbiddenMode}){
+      $pc->{$key} = noiseTextTag $pc->{$key};
+    }
+  }
+}
+### パートナーデータ共通処理 --------------------------------------------
+sub setupPartnerDataCommon {
+  my ($pc, %OPT) = @_;
+  require $set::lib_convert if !$::in{url};
+
+  foreach my $num (1 .. $OPT{max}){
+    my $urlKey  = "partner${num}Url";
+    my $autoKey = "partner${num}Auto";
+    next if !$pc->{$urlKey} || !$pc->{$autoKey};
+    my %pr = loadPartnerData($pc->{$urlKey});
+
+    if(!$pr{_error} && !$pr{convertSource}){
+      $pr{_error} = "データの読み込みに失敗しました。";
+    }
+    if($pr{_error}){
+      $pc->{"p${num}_error"} = $pr{_error};
+      next;
+    }
+    if($pr{ver} && $OPT{updateSub} && ref $OPT{updateSub} eq 'CODE'){
+      %pr = $OPT{updateSub}->(\%pr);
+    }
+    if($::in{log}){
+      my $test;
+      my $maxCount = $pr{imageMaxCount} || $set::image_maxcount;
+      foreach (qw/image imageUpdate imageURL imagePath imageData imageFit imagePercent imagePositionX imagePositionY imageCopyright imageCopyrightURL imageSpoiler words wordsX wordsY/){
+        foreach my $s ('', 2 .. $maxCount){
+          $pc->{"p${num}_$_$s"} = $pr{$_.$s};
+          $test .= "p${num}_$_$s, ";
+        }
+      }
+      $pc->{"p${num}_mainImage"} = $pr{mainImage};
+    }
+    else {
+      $pc->{"p${num}_".$_} = $pr{$_} foreach keys %pr;
+
+      if($OPT{onPartner} && ref $OPT{onPartner} eq 'CODE'){
+        $OPT{onPartner}->($pc, \%pr, $num);
+      }
+      if($pr{forbidden} && $OPT{onForbidden} && ref $OPT{onForbidden} eq 'CODE'){
+        $OPT{onForbidden}->($pc, \%pr, $num);
+      }
+    }
+  }
+  foreach my $num (1 .. $OPT{max}){
+    if($pc->{"p${num}_mainImage"} > 1){
+      my $suffix = imageSuffix($pc->{"p${num}_mainImage"});
+      foreach my $key (qw/image imageUpdate imageURL imagePath imageData imageFit imagePercent imagePositionX imagePositionY imageCopyright imageCopyrightURL imageSpoiler words wordsX wordsY/){
+        $pc->{"p${num}_$key"} = $pc->{"p${num}_$key$suffix"};
+      }
+    }
+
+    next if !$pc->{"p${num}_imageURL"};
+    $pc->{"p${num}_imageSrc"} = $pc->{"p${num}_imageURL"};
+    $pc->{images} .= "'p${num}': \"".($pc->{modeDownload} ? partnerImageToBase64($pc, $num) : $pc->{"p${num}_imageURL"})."\", ";
+    if($pc->{"p${num}_imageFit"} eq 'percentY'){
+      $pc->{"p${num}_imageFit"} = 'auto '.$pc->{"p${num}_imagePercent"}.'%';
+    }
+    elsif($pc->{"p${num}_imageFit"} =~ /^percentX?$/){
+      $pc->{"p${num}_imageFit"} = $pc->{"p${num}_imagePercent"}.'%';
+    }
+    if($pc->{"p${num}_imageCopyrightURL"}){
+      $pc->{"p${num}_imageCopyright"} = "<a href=\"$pc->{\"p${num}_imageCopyrightURL\"}\" target=\"_blank\">".($pc->{"p${num}_imageCopyright"}||$pc->{"p${num}_imageCopyrightURL"})."</a>";
+    }
+  }
+  foreach my $num (1 .. $OPT{max}){
+    setColors($pc, "p${num}_");
+    setFont($pc, "p${num}_");
+  }
+}
 
 ### データ取得 --------------------------------------------------
-sub getSheetData {
+sub loadSheetData {
   my %pc;
-  my $datadir = $set::char_dir;
+  my $dir = $set::char_dir;
   ## データ読み込み
   if($::in{id}){
     my $datatype = ($::in{log}) ? 'logs' : 'data';
-    my $hit = 0;
-    open my $IN, '<', "${datadir}${file}/${datatype}.cgi" or viewNotFound($datadir);
-    while (<$IN>){
-      if($datatype eq 'logs'){
-        if (index($_, "=") == 0){
-          if (index($_, "=$::in{log}=") == 0){ $hit = 1; next; }
-          if ($hit){ last; }
-        }
-        if (!$hit) { next; }
-      }
+    my @lines = readSheetRecordLines($dir, $file, $datatype, $::in{log});
+    foreach (@lines){
       chomp $_;
       my ($key, $value) = split(/<>/, $_, 2);
       $pc{$key} = $value if $value ne '';
     }
-    close($IN);
-    if($datatype eq 'logs' && !$hit){ error("過去ログ（$::in{log}）が見つかりません。"); }
 
     if($::in{log}){
-      ($pc{protect}, $pc{forbidden}) = getProtectType("${datadir}${file}/data.cgi");
-      $pc{logId} = $::in{log};
+      # 閲覧制限・画像関係は最新のものを適用
+      my %imageNotsets = map {
+        my $suffix = imageSuffix($_);
+        "$suffix" => ($pc{"image$suffix"} ? 0 : 1)
+      } 1 .. $set::image_maxcount;
+
+      %pc = (%pc, getLatestData($dir, $file,
+        'protect','forbidden','hide',
+        ( map {
+          my $s = imageSuffix($_);
+          "image$s","imageUpdate$s","imageFit$s","imagePercent$s","imagePositionX$s","imagePositionY$s","imageCopyright$s","imageCopyrightURL$s","imageSpoiler$s",
+        } 1 .. $set::image_maxcount)
+      ));
+      # 「画像がない」状態だけ当時を反映
+      foreach my $suffix (keys %imageNotsets) {
+        delete $pc{"image$suffix"} if $imageNotsets{$suffix};
+      }
     }
   }
   ## データ読み込み：コンバート
   elsif($::in{url}){
-    %pc = %conv_data;
-    if(!$conv_data{ver}){
+    %pc = %convData;
+    $pc{hide} = 1;
+    if(!$convData{ver}){
       require $set::lib_calc_char;
-      %pc = data_calc(\%pc);
+      %pc = dataCalc(\%pc);
     }
   }
 
   ##
-  elsif(exists $set::lib_type{$type}){ $pc{sheetType} = $set::lib_type{$type}{sheetType}; }
-  else { $pc{sheetType} = 'chara'; }
-
   if(!$::in{checkView} && (
     ($pc{protect} eq 'none') || 
     ($author && ($author eq $LOGIN_ID || $set::masterid eq $LOGIN_ID))
@@ -84,30 +348,93 @@ sub getSheetData {
   if($::in{mode} eq 'download'){
     $pc{modeDownload} = 1;
   }
-  
+
   ## キャラクター画像
-  if($pc{image}){
-    if($pc{convertSource}) {
-      $pc{imageSrc} = $pc{imageURL};
+  $pc{mainImage} ||= 1;
+  if($pc{ver} || !$pc{convertSource}) {
+    $pc{images} = '';
+    $pc{imageLayouts} = '';
+    my %layouts;
+    my $maxCount = $pc{imageMaxCount} || $set::image_maxcount || 1;
+    foreach my $imageNo (1 .. $maxCount){
+      my $suffix = imageSuffix($imageNo);
+      next unless $pc{"image$suffix"};
+      next if $pc{"imageHide$suffix"};
+
+      my $update = $pc{"imageUpdate$suffix"};
+      my $src = $pc{convertSource} ? $pc{"imageURL$suffix"} : "./?id=$::in{id}&mode=image&imageNo=$imageNo&cache=$update";
+
+      if($pc{"imageFit$suffix"} eq 'percentY'){
+        $pc{"imageFit$suffix"} = 'auto '.$pc{"imagePercent$suffix"}.'%';
+      }
+      elsif($pc{"imageFit$suffix"} =~ /^percentX?$/){
+        $pc{"imageFit$suffix"} = $pc{"imagePercent$suffix"}.'%';
+      }
+      elsif(!$pc{"imageFit$suffix"}){
+        $pc{"imageFit$suffix"} = 'cover';
+      }
+
+      if($pc{"imageCopyrightURL$suffix"}){
+        $pc{"imageCopyright$suffix"} = qq|<a href="$pc{"imageCopyrightURL$suffix"}" target="_blank">|
+          . (unescapeTags($pc{"imageCopyright$suffix"}) || $pc{"imageCopyrightURL$suffix"})
+          . "</a>";
+      }
+      else { $pc{"imageCopyright$suffix"} = unescapeTags($pc{"imageCopyright$suffix"}) }
+
+      $pc{images} .= qq|$imageNo: "|.($pc{modeDownload} ? sheetImageToBase64($dir, $file, $pc{"image$suffix"}, $suffix) : $src).'", ';
+      my @words = renderWords(
+        unescapeTags($pc{"words$suffix"}),
+        $pc{"wordsX$suffix"},
+        $pc{"wordsY$suffix"}
+      );
+      $layouts{$imageNo} = {
+        fit => $pc{"imageFit$suffix"},
+        X => $pc{"imagePositionX$suffix"}."%",
+        Y => $pc{"imagePositionY$suffix"}."%",
+        spoiler => $pc{"imageSpoiler$suffix"},
+        copyright => ($pc{"imageCopyright$suffix"} || ''),
+        words  => ($words[0] || ''),
+        wordsPosition => join(';', $words[1],$words[2]),
+      };
     }
-    else {
-      $pc{imageSrc} =     "./?id=$::in{id}&mode=image&cache=$pc{imageUpdate}";
-      $pc{imageURL} = url()."?id=$::in{id}&mode=image&cache=$pc{imageUpdate}";
+    $pc{imageLayouts} = %layouts ? JSON::PP->new->canonical(1)->encode(\%layouts) : "{}";
+
+
+    my $mainSuffix = imageSuffix($pc{mainImage});
+    if(!$pc{"image$mainSuffix"}){
+      foreach my $imageNo (1 .. $maxCount){
+        my $suffix = imageSuffix($imageNo);
+        if($pc{"image$suffix"}){
+          $pc{mainImage} = $imageNo;
+          $mainSuffix = $suffix;
+          last;
+        }
+      }
     }
-    $pc{images} = "'1': \"".($pc{modeDownload} ? urlToBase64("${datadir}${file}/image.$pc{image}") : $pc{imageSrc})."\", ";
-    
-    if($pc{imageFit} eq 'percentY'){
-      $pc{imageFit} = 'auto '.$pc{imagePercent}.'%';
+    $pc{image} = $pc{"image$mainSuffix"};
+    $pc{imageFit} = $pc{"imageFit$mainSuffix"};
+    $pc{imagePositionX} = $pc{"imagePositionX$mainSuffix"};
+    $pc{imagePositionY} = $pc{"imagePositionY$mainSuffix"};
+    $pc{imageCopyright} = $pc{"imageCopyright$mainSuffix"};
+    $pc{imageSpoiler} = $pc{"imageSpoiler$mainSuffix"};
+    $pc{words} = $pc{"words$mainSuffix"};
+    $pc{wordsX} = $pc{"wordsX$mainSuffix"};
+    $pc{wordsY} = $pc{"wordsY$mainSuffix"};
+
+    if($pc{image}) {
+      if($pc{convertSource}) {
+        $pc{imageSrc} = $pc{"imageURL$mainSuffix"};
+      }
+      else {
+        $pc{imageSrc}    =     qq|./?id=$::in{id}&mode=image&imageNo=$pc{mainImage}&cache=$pc{"imageUpdate$mainSuffix"}|;
+        $pc{imageURL}    = url().qq|?id=$::in{id}&mode=image&imageNo=$pc{mainImage}&cache=$pc{"imageUpdate$mainSuffix"}|;
+        $pc{imageOgpURL} = url().qq|?id=$::in{id}&mode=ogp-image&imageNo=$pc{mainImage}&cache=$pc{"imageUpdate$mainSuffix"}| unless $pc{imageSpoiler};
+      }
     }
-    elsif($pc{imageFit} =~ /^percentX?$/){
-      $pc{imageFit} = $pc{imagePercent}.'%';
-    }
-    
-    ## 権利表記
-    if($pc{imageCopyrightURL}){
-      $pc{imageCopyright} = "<a href=\"$pc{imageCopyrightURL}\" target=\"_blank\">".(unescapeTags($pc{imageCopyright})||$pc{imageCopyrightURL})."</a>";
-    }
-    else { $pc{imageCopyright} = unescapeTags($pc{imageCopyright}) }
+  }
+  elsif($pc{convertSource}) {
+    $pc{imageSrc} = $pc{imageURL};
+    $pc{images} = qq|1: "$pc{imageURL}"|;
   }
 
   ## 
@@ -116,28 +443,121 @@ sub getSheetData {
 }
 
 sub viewNotFound { #v1.14/v1.20のコンバート処理
-  my $dir = shift;
+  my $dir = $set::char_dir;
   if(!$::in{log} && $file =~ /^(.+)\/(.+?)$/){
     my $user = $1;
     my $file = $2;
     if(-d "${dir}${file}"){
-      if(!-d "${dir}${user}"){ mkdir "${dir}${user}" or error("データディレクトリの作成に失敗しました。"); }
+      if(!-d "${dir}${user}"){ mkdir "${dir}${user}" or error("500:データディレクトリの作成に失敗しました。"); }
       rename("${dir}${file}", "${dir}${user}/${file}");
       print "Location:./?id=$::in{id}\n\n";
       exit;
     }
   }
+}
+
+### テンプレート操作 --------------------------------------------------
+my $template;
+sub setupViewTemplate {
+  my (%args) = @_;
+
+  my $game =  (exists $set::lib_type{$type}) ? $set::lib_type{$type}{game} || $set::game : $set::game;
+
+  $template = HTML::Template->new(
+    filename  => $set::skin_sheet,
+    utf8 => 1,
+    path => ['./', $::core_dir."/skin/$game", $::core_dir."/skin/_common", $::core_dir],
+    search_path_on_include => 1,
+    die_on_bad_params => 0,
+    die_on_missing_include => 0,
+    case_sensitive => 1,
+    global_vars => 1,
+    loop_context_vars => 1,
+  );
+
+  $template->param(title => $set::title);
+  $template->param(coreDir => $::core_dir);
+  $template->param(gameDir => $game);
   
-  error('データがありません');
+  $template->param(mode => $::in{mode});
+
+  $template->param(sheetType => (exists $set::lib_type{$type}) ? $set::lib_type{$type}{sheetType} : 'chara' );
+  $template->param(generateType => $args{generateType} // '');
+  $template->param(defaultImage => $args{defaultPieceImage} // qq|$::core_dir/skin/$game/img/default_pc.png|);
+
+  $template->param(logId => $::in{log});
+
+  $template->param(canonicalURL => url(-full => 1, -query => 0) . "?id=$::in{id}");
+
+  $template->param(LOGIN_ID => $LOGIN_ID);
+
+  return $template;
+}
+## 最終アウトプット
+sub printFinalizedView {
+  $template->param(error => $main::login_error);
+  $template->param(ver => $::ver);
+
+  print "Content-Type: text/html; charset=utf-8\n\n";
+  if($::pc{modeDownload}){
+    if($::pc{forbidden} && $::pc{yourAuthor}){ $template->param(forbidden => ''); }
+    print downloadModeSheetConvert( outputTemplate($template) );
+  }
+  else {
+    print outputTemplate($template);
+  }
+}
+
+### メニュー --------------------------------------------------
+sub setSheetMenu {
+  return if $::pc{modeDownload};
+
+  my @menu = ();
+  push(@menu, { TEXT => '', ICON => 'arrow_top_left', TYPE => "href", VALUE => './'.($type ? "?type=$type" : '') });
+  push(@menu, @_);
+  if($::in{url}){ # コンバートビュー
+    push(@menu, { TEXT => 'コンバート', ICON => 'input', TYPE => "href", VALUE => "./?mode=convert&url=$::in{url}" });
+  }
+  else {
+    if($::in{log}){ # 過去ログ
+      unless($::pc{forbiddenMode}){
+        push(@menu, { TEXT => '出力' , ICON => 'output', TYPE => "onclick", VALUE => "downloadListOn()" });
+      }
+      push(@menu, { TEXT => '過去ログ', ICON => 'history', TYPE => "onclick", VALUE => 'loglistOn()' });
+      if($::pc{reqdPassword}){ push(@menu, { TEXT => '復元', ICON => 'restore_page',  TYPE => "onclick", VALUE => "editOn()" }); }
+      else                   { push(@menu, { TEXT => '復元', ICON => 'restore_page',  TYPE => "href" , VALUE => "./?mode=edit&id=$::in{id}&log=$::in{log}" });
+      }
+    }
+    else { #通常
+      unless($::pc{forbiddenMode}){
+        if($template->param('generateType')){
+          push(@menu, { TEXT => 'パレット', ICON => 'speaker_notes', TYPE => "onclick", VALUE => "chatPaletteOn()" });
+        }
+        push(@menu, { TEXT => '出力'    , ICON => 'output',  TYPE => "onclick", VALUE => "downloadListOn()" });
+        push(@menu, { TEXT => '過去ログ', ICON => 'history', TYPE => "onclick", VALUE => "loglistOn()" });
+      }
+      if($::pc{reqdPassword}){ push(@menu, { TEXT => '編集', ICON => 'edit_document', SIZE=> 'large', TYPE => "onclick", VALUE => "editOn()" }); }
+      else                   { push(@menu, { TEXT => '編集', ICON => 'edit_document', SIZE=> 'large', TYPE => "href"   , VALUE => "./?mode=edit&id=$::in{id}" }); }
+    }
+  }
+
+  $template->param(Menu => createSheetMenu(@menu));
+}
+
+sub createSheetMenu {
+  my @menu = @_;
+  foreach my $line (@menu){
+    if (length($line->{TEXT}) >= 4){ $line->{TEXT} = "<span>$line->{TEXT}</span>" }
+  }
+  return \@menu;
 }
 
 ### バックアップ一覧 --------------------------------------------------
 sub getLogList {
   my $dir  = shift;
   my $file = shift;
-  open(my $FH,"${dir}${file}/log-list.cgi") || logFileCheck("${dir}${file}",'view');
-  my @lines = reverse <$FH>;
-  close($FH);
+  if(!sheetFileExists($dir, $file, 'log-list.cgi')){ checkLogFile("${dir}${file}",'view'); }
+  my @lines = reverse readSheetFileLines($dir, $file, 'log-list.cgi');
   my @logs; my $selectedname;
   foreach (@lines){
     chomp;
@@ -161,11 +581,25 @@ sub getLogList {
 }
 ### カラー出力 --------------------------------------------------
 sub setColors {
-  my $type = shift;
-  setDefaultColors($type);
-  $::pc{$type.'colorBaseBgS'} = $::pc{$type.'colorBaseBgS'} * 0.7;
-  $::pc{$type.'colorBaseBgL'} = 100 - $::pc{$type.'colorBaseBgS'} / 6;
-  $::pc{$type.'colorBaseBgD'} = 15;
+  my ($pc, $type) = @_;
+  setDefaultColors($pc, $type);
+  $pc->{$type.'colorBaseBgS'} = $pc->{$type.'colorBaseBgS'} * 0.7;
+  $pc->{$type.'colorBaseBgL'} = 100 - $pc->{$type.'colorBaseBgS'} / 6;
+  $pc->{$type.'colorBaseBgD'} = 15;
+}
+### フォント出力 --------------------------------------------------
+sub setFont {
+  my ($pc, $type) = @_;
+  if($pc->{$type.'nameFont'}){
+    foreach (@set::googlefonts){
+      if($_->[0] eq $pc->{$type.'nameFont'}){
+        $pc->{$type.'nameFontUrl'} = $pc->{$type.'nameFont'} =~ s/ /+/gr;
+        if($_->[1] =~ /^[0-9]+$/){ $pc->{$type.'nameFontUrl'} .= ":wght@".$_->[1] }
+        $pc->{$type.'nameFontWeight'} = $_->[1];
+        last;
+      }
+    }
+  }
 }
 ### 伏せ文字 --------------------------------------------------
 sub noiseText {
@@ -191,11 +625,11 @@ sub isNoiseText {
   return $text =~ /^[█▇▆▅▄▃▂▚▞▙▛▜▟\n\s]+$/ ? 1 : undef;
 }
 ### キャラクター名 --------------------------------------------------
-sub stylizeCharacterName {
+sub renderCharacterName {
   my $name = shift;
   my $ruby = shift;
   $name = insertWbr($name);
-  if($ruby) {
+  if($name ne '' && $ruby ne '') {
     return "<ruby><rp>｜</rp>${name}<rp>《</rp><rt>${ruby}</rt><rp>》</rp></ruby>"
   }
   return $name;
@@ -207,8 +641,14 @@ sub insertWbr { #固有名詞向け
   $name =~ s#[+＋*＊@＠“＜]#<wbr>$&#g;
   return $name;
 }
+#sub insertWbrLineBreak { #強引に禁則処理する
+#  my $text = shift;
+#  $text =~ s#((?:\G|>)[^<]*?)([+\-*/]?[0-9a-zA-Z]+)#$1<wbr>$2#g;
+#  $text =~ s#((?:\G|>)[^<]*?)([^0-9a-zA-Z\s][,.、。)）\]］}｝、〕〉》」』】〙〗〟’”｠»ゝゞーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇷ゚ㇺㇻㇼㇽㇾㇿ々〻～!！?？･・:;]{1,3})#$1<span class="nowrap">$2</span>#g;
+#  return $text;
+#}
 ### セリフ --------------------------------------------------
-sub stylizeWords {
+sub renderWords {
   my ($words, $x, $y) = @_;
   $words =~ s/<br>/\n/g;
   $words =~ s/“/〝/g;
@@ -229,20 +669,12 @@ sub formatHistoryFigures {
   $text =~ s#[0-9,]+#<span class="number">$&</span><wbr>#g;
   return $text;
 }
-### メニュー --------------------------------------------------
-sub sheetMenuCreate {
-  my @menu = @_;
-  foreach my $line (@menu){
-    if   (length($line->{TEXT}) >= 4){ $line->{TEXT} = "<span>$line->{TEXT}</span>" }
-    elsif(length($line->{TEXT}) >= 5){ $line->{TEXT} = "<span>$line->{TEXT}</span>" }
-  }
-  return \@menu;
-}
 ### ダウンロード用 --------------------------------------------------
 sub downloadModeSheetConvert {
   my $sheet = shift;
   $sheet =~ s#<link rel="stylesheet" data-dl href="(.+?)(\?.+?)?">#"<style>\n".styleToHtml($1)."\n</style>"#gie;
   $sheet =~ s#<script data-dl src="(.+?)(\?.+?)?"></script>#"<script>\n".styleToHtml($1)."\n</script>"#gie;
+  $sheet =~ s{ href="\./.*?"}{}gi;
   return $sheet;
 }
 sub styleToHtml {
@@ -252,10 +684,32 @@ sub styleToHtml {
   close($FH);
   
   (my $dir = $_[0]) =~ s#/[^/]+?$##;
-  $output =~ s/url\((.+?\.png|jpg|gif|webp)\)/"url(".urlToBase64("$dir\/$1").")"/gie;
+  $output =~ s{url\((.+?\.(?:png|jpg|gif|webp))\)/\* DL:(.+?) \*/}{$2}gi;
+  $output =~ s{url\((.+?\.(?:png|jpg|gif|webp))\)}{"url(".urlToBase64("$dir\/$1").")"}gie;
   return "$output";
 }
 use MIME::Base64;
+sub sheetImageToBase64 {
+  my ($dir, $file, $ext, $suffix) = @_;
+  $suffix //= '';
+  my $binary = readSheetFileBinary($dir, $file, "image$suffix.$ext");
+  return binaryToImageBase64($binary, $ext) if defined $binary;
+  return urlToBase64("${dir}${file}/image$suffix.$ext", $ext);
+}
+sub binaryToImageBase64 {
+  my ($binary, $ext) = @_;
+  if ($ext eq "jpg") { $ext ="jpeg"; }
+  my $base64 = encode_base64($binary, '');
+  return "data:image/$ext;base64,$base64";
+}
+sub partnerImageToBase64 {
+  my ($pc, $num) = @_;
+  my $ext = $pc->{"p${num}_image"};
+  my $binary = $pc->{"p${num}_imageData"};
+  return binaryToImageBase64($binary, $ext) if defined $binary;
+  return urlToBase64($pc->{"p${num}_imagePath"}, $ext) if $pc->{"p${num}_imagePath"};
+  return $pc->{"p${num}_imageURL"};
+}
 sub urlToBase64 {
   my $url = shift;
   my $ext = shift;
@@ -269,8 +723,7 @@ sub urlToBase64 {
   my $binary; my $buffer;
   while(read($IMG, $buffer, 2048)) { $binary .= $buffer }
   close($IMG);
-  my $base64 = encode_base64($binary, '');
-  return "data:image/$ext;base64,$base64";
+  return binaryToImageBase64($binary, $ext);
 }
 
 1;

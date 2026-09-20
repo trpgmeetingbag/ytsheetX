@@ -51,6 +51,39 @@ button,
   &:hover {
     background: #c0c7cf;
   }
+  
+  &[disabled]{
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+dialog {
+  margin: auto;
+  padding: 1em;
+  text-align: center;
+  border-radius: 1em;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+
+  & h3 {
+    text-align: left;
+  }
+  & p {
+    margin: 1em;
+  }
+  > form {
+    & input + input[type="submit"] {
+      margin-left: .5em;
+    }
+  }
+  > button + button {
+    margin-left: 1em;
+  }
+  > hr {
+    margin: 1em 0;
+  }
 }
 
 fieldset {
@@ -236,7 +269,7 @@ label:is(.radio-button, .check-button) {
 
 /* 非表示 */
 .hidden {
-  display: none;
+  display: none !important;
 }
 /* テーブル */
 .edit-table {
@@ -384,11 +417,9 @@ dl.edit-table:last-child > dt:last-of-type ~ dd {
   font-size: 130%;
   font-family: var(--base-font-family-min);
   line-height: 1;
-  text-shadow: #000 0px 0px .1rem,
-    #000  .1rem .1rem, #000 -.1rem -.1rem,
-    #000 -.1rem .1rem, #000  .1rem -.1rem,
-    #000  .0rem .1rem, #000  .0rem -.1rem,
-    #000 -.1rem .0rem, #000  .1rem  .0rem;
+  -webkit-text-stroke: .2rem #000;
+  text-stroke: .2rem #000;
+  paint-order: stroke;
   white-space: nowrap;
   overflow: hidden;
 
@@ -415,12 +446,21 @@ dl.edit-table:last-child > dt:last-of-type ~ dd {
   justify-content: center;
   flex-wrap: wrap;
   padding: 0 1rem;
-  cursor: pointer;
   user-select: none;
   font-family: var(--font-proportional);
 
+  &[onclick] {
+    cursor: pointer;
+  }
   > span {
     display: inline-block;
+  }
+  > button {
+    position: absolute;
+    inset: 0;
+    border-radius: 0;
+    border-width: 0;
+    background: none;
   }
 }
 #header-menu ul li:not(.buttons) {
@@ -472,18 +512,47 @@ dl.edit-table:last-child > dt:last-of-type ~ dd {
     font-variation-settings: 'FILL' 1;
     transform: scale(1.3);
   }
-  &.help-icon::before     { content: '\e887'; }
-  &.color-icon::before    { content: '\e23a'; }
-  &.view-icon::before     { content: '\e8f4'; }
-  &.download-icon::before { content: '\f090'; }
+  &.help-icon::before {
+    content: '\e887';
+    color: #8fa;
+  }
+  &.color-icon::before {
+    content: '\e23a';
+    background-clip: text;
+    background-image:
+    linear-gradient(to bottom,#9ff,#aaf,#f7f);
+    color: transparent;
+  }
   &.view-icon {
     position: relative;
+    &::before { content: '\e8f4'; }
     & a {
       position: absolute;
       inset: 0;
       background: none;
     }
   }
+  &.import-icon {
+    &::before { content: '\e255'; }
+  }
+  &.export-icon {
+    &::before { content: '\f090'; }
+  }
+}
+#header-menu ul li.nightmode-button {
+  display: flex;
+  gap: .2em;
+  width: 3em;
+  padding: .4em .2em;
+  &::before,
+  &::after {
+    font-family: "Material Symbols Outlined";
+    font-variation-settings: 'FILL' 1;
+  }
+  &::before { content: '\e518'; color: #fa0; }
+  &::after  { content: '\e51c'; color: #fff5; }
+  .night &::before { color: #fff5; }
+  .night &::after  { color: #0df; }
 }
 
 @media screen and (width <= 735px){
@@ -496,15 +565,16 @@ dl.edit-table:last-child > dt:last-of-type ~ dd {
   #header-menu ul {
     bottom: calc(-1em - 3px - 2rem);
   }
-  #header-menu ul li:not(.buttons) {
-    min-width: 2.5em;
+  #header-menu ul li {
     text-align: center;
     white-space: nowrap;
   }
   #header-menu ul li[class$=icon] {
+    width: 4.5rem;
     font-size: 150%;
   }
   #header-menu ul li.buttons .submit {
+    width: 5rem;
     font-size: 130%;
   }
   #header-menu ul li span.shorten {
@@ -631,32 +701,7 @@ article > form > hr {
 input[type="number"] {
   text-align: center;
 }
-input[type="button"] {
-  background: linear-gradient(to bottom, #e0e7ef, #c0c7cf);
-  box-shadow: 1px 1px 0 0 #ffffff inset, -1px -1px 0 0 #bbbbdd inset;
-  .night & {
-    color: #fff;
-    background: linear-gradient(to bottom, #50575f, #30373f);
-    box-shadow: 1px 1px 0 0 #777788 inset, -1px -1px 0 0 #000000 inset;
-  }
-}
-input[type="submit"] {
-  background: linear-gradient(to bottom, #ddeeff, #ccccff);
-  box-shadow: 1px 1px 0 0 #ffffff inset, -1px -1px 0 0 #bbbbee inset;
-  .night & {
-    color: #fff;
-    background: linear-gradient(to bottom, #445566, #333355);
-    box-shadow: 1px 1px 0 0 #777788 inset, -1px -1px 0 0 #000000 inset;
-  }
-}
-input[type="button"]:hover,
-input[type="submit"]:hover {
-  background: linear-gradient(to bottom, rgba(50,150,250,0.5), rgba(50,50,250,0.5));
-  color: #fff;
-  .night & {
-    background: linear-gradient(to bottom, rgba(50,150,250,0.5), rgba(50,50,250,0.5));
-  }
-}
+
 /* 行追加ボタン */
 .add-del-button {
   text-align: center;
@@ -754,8 +799,8 @@ input[type="submit"]:hover {
 
   &:empty{ display: none; }
 
+  list-style-type: "※";
   > li {
-    list-style-type: "※";
     margin-left: 1em;
     text-align: inherit;
   }
@@ -1114,10 +1159,9 @@ input[type="submit"]:hover {
   background-color: hsla(0, 0%, 10%, 0.6);
   image-rendering: -webkit-optimize-contrast;
 }
-.image-custom-view-area > div.image-custom-frame {  }
 .image-custom-view-area > div#image-custom-frame-M  { grid-column: 3; grid-row: 2 / span 2; height: 567px; }
-.image-custom-view-area > div#image-custom-frame-S1 { grid-column: 2; grid-row: 2; width: 20vh; height: 40vh; margin-top: 0; }
-.image-custom-view-area > div#image-custom-frame-S2 { grid-column: 2; grid-row: 3; width: 25vh; height: 30vh; margin-top: 3em; }
+.image-custom-view-area > div#image-custom-frame-S  { grid-column: 2; grid-row: 2; width: 20vh; height: 40vh; margin-top: 0; }
+.image-custom-view-area > div#image-custom-frame-O { grid-column: 2; grid-row: 3; width: 25vh; height: 25vh; margin-top: 3em; }
 .image-custom-view-area > div#image-custom-frame-M {
   cursor: grab;
 }
@@ -1132,6 +1176,10 @@ input[type="submit"]:hover {
   background-image: url(../img/back-pattern.png);
   background-repeat: repeat;
   border-radius: 5px;
+  &#image-custom-frame-O {
+  background-color: #f5f5f5;
+    background-image: none;
+  }
 }
 .image-custom-view-area > div.image-custom-frame .image-custom-view {
   position: absolute;
@@ -1155,12 +1203,12 @@ input[type="submit"]:hover {
   pointer-events: none;
   user-select: none;
 }
-.image-custom-view-area > div.image-custom-frame input[name="imagePositionX"] {
+.image-custom-view-area > div.image-custom-frame input[name="editingImagePositionX"] {
   position: absolute;
   bottom: -1.5em;
   width: 100%;
 }
-.image-custom-view-area > div.image-custom-frame input[name="imagePositionY"] {
+.image-custom-view-area > div.image-custom-frame input[name="editingImagePositionY"] {
   position: absolute;
   top: 50%;
   right: calc(-567px /2 - 1em);
@@ -1200,11 +1248,102 @@ input[type="submit"]:hover {
 .image-custom-form p textarea {
   padding: .2em .5em;
 }
+.image-custom-form div:has(input[type="file"]) {
+  display: grid;
+  align-items: center;
+  gap: .5em;
+  padding: 0 .5em .2em;
+}
+#image-select-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 1em auto 0;
+  padding: 1px 1em 1em;
+  overflow-x: auto;
+  
+  > div {
+    display: grid;
+    gap: 5px;
+
+    > label {
+      text-align: center;
+      &:has(:disabled) {
+        visibility: hidden;
+      }
+    }
+    > label:has([name^="imageDelete"]) {
+      width: max-content;
+      margin: auto;
+      .image-ext[value=""] ~ & {
+        visibility: hidden;
+      }
+    }
+    > label.image-select {
+      padding-top: 2px;
+      display: inline-block;
+      border-width: 1px;
+      border-style: solid;
+      border-radius: 5px;
+      cursor: pointer;
+      > img {
+        width: 100px;
+        height: 100px;
+      }
+      &:has(.selected) {
+        outline-width: 1px;
+        outline-style: solid;
+        outline-offset: 0;
+      }
+      > span {
+        display: block;
+        line-height: 1.2;
+      }
+      > span.check {
+        height: 1.2em;
+        &::after {
+          content: "編集する";
+          display: inline-block;
+          width: 4em;
+          opacity: 0.5;
+        }
+        label:hover &::after {
+          opacity: 1;
+        }
+      }
+      > span.check:has(~ .selected) {
+        &::after {
+          content: "編集中";
+          opacity: 1;
+        }
+      }
+    }
+    > select {
+      width: 100px;
+      margin: 0 1px;
+      font-size: .8em;
+      appearance: none;
+      cursor: pointer;
+      option { font-size: 1.1em; }
+      &:has(:first-child:checked) { opacity: 0.6; }
+      &:has([value="R-18"]:checked)     { background-color: #f7c; }
+      &:has([value="R-18G"]:checked)    { background-color: #f64; }
+      &:has([value="sensitive"]:checked){ background-color: #c9f; }
+      &:has([value="spoiler"]:checked)  { background-color: #fb0; }
+      .night & {
+        &:has([value="R-18"]:checked)     { background-color: #d59; }
+        &:has([value="R-18G"]:checked)    { background-color: #c00; }
+        &:has([value="sensitive"]:checked){ background-color: #a0d; }
+        &:has([value="spoiler"]:checked)  { background-color: #c80; }
+      }
+    }
+  }
+}
 #words-preview {
   position: absolute;
   padding-top: 1em;
   padding-bottom: 1em;
   writing-mode: vertical-rl;
+  font-family: var(--base-font-family-min);
   font-weight: bold;
   font-size: 2rem;
   color: var(--text-color);
@@ -1254,8 +1393,8 @@ input[type="submit"]:hover {
     grid-template-columns: 1fr 350px 1fr;
   }
   .image-custom-view-area > div#image-custom-frame-M { grid-column: 2; grid-row: 2 / span 1; }
-  .image-custom-view-area > div#image-custom-frame-S1,
-  .image-custom-view-area > div#image-custom-frame-S2 { display: none; }
+  .image-custom-view-area > div#image-custom-frame-S,
+  .image-custom-view-area > div#image-custom-frame-O { display: none; }
 }
 @media screen and (width <= 860px){
   #image-custom {
@@ -1265,7 +1404,7 @@ input[type="submit"]:hover {
     grid-template-columns: 1fr 35vw 1fr;
   }
   .image-custom-view-area > div#image-custom-frame-M { height: 56.7vw; }
-  .image-custom-view-area > div.image-custom-frame input[name="imagePositionY"] {
+  .image-custom-view-area > div.image-custom-frame input[name="editingImagePositionY"] {
     right: calc(-56.7vw /2 - 1em);
     width: 56.7vw;
   }
@@ -1288,7 +1427,7 @@ input[type="submit"]:hover {
     grid-template-rows: 1fr max-content 1fr;
   }
   .image-custom-view-area > div#image-custom-frame-M { grid-column: 2; grid-row: 2 / span 1; height: 46vh; }
-  .image-custom-view-area > div.image-custom-frame input[name="imagePositionY"] {
+  .image-custom-view-area > div.image-custom-frame input[name="editingImagePositionY"] {
     right: calc(-46vh /2 - 1em);
     width: 46vh;
   }
@@ -1592,14 +1731,35 @@ input[type="submit"]:hover {
   + .box.color-custom {
     border-top-width: 1px;
   }
-}
-.box.color-custom table {
-  margin-left: 1em;
-  & td {
-    padding: .5em;
+  & table {
+    margin-left: 1em;
+    & td {
+      padding: .5em;
+    }
+    & td:last-child {
+      width: 4em;
+    }
   }
-  & td:last-child {
-    width: 4em;
+}
+.box.font-custom {
+  & fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    
+    margin: .5em 1em;
+    > label {
+      align-content: center;
+      > span {
+        font-size: 150%;
+        font-weight: bold;
+        font-family: var(--base-font-family-min);
+        > small {
+          font-size: 80%;
+          font-weight: normal;
+          font-family: var(--font-proportional);
+        }
+      }
+    }
   }
 }
 @media screen and (width <= 735px){
@@ -1617,6 +1777,9 @@ input[type="submit"]:hover {
   .box.color-custom table td:last-child {
     grid-column: 2;
     grid-row: 1;
+  }
+  .box.color-custom fieldset {
+    grid-template-columns: 1fr 1fr;
   }
 }
 .box.color-custom input[type="range"] {
@@ -1672,6 +1835,10 @@ input[type="submit"]:hover {
   grid-template-columns: 1fr 1fr;
   grid-gap: 30px;
   margin-top: 25px;
+  
+  @media screen and (width <= 735px){
+    grid-template-columns: 1fr;
+  }
 
   & .night {
     background-color: #000;
@@ -1686,14 +1853,25 @@ input[type="submit"]:hover {
     border-color: var(--box-outside-border-color, inherit);
     font-family: var(--base-font-family-min);
     font-weight: bold;
+    font-size: 150%;
+    & rt {
+      font-family: inherit;
+      font-weight: inherit;
+    }
   }
-  & .light .name::after,
-  .night & .night .name::after {
-    content: "：ライトモード";
+  & .name::before {
+    display: block;
+    font-family: var(--base-font-family-jp);
+    font-weight: normal;
+    font-size: 1.2rem;
   }
-  .night & .light .name::after,
-  & .night .name::after {
-    content: "：ナイトモード";
+  & .light .name::before,
+  .night & .night .name::before {
+    content: "色見本：ライトモード";
+  }
+  .night & .light .name::before,
+  & .night .name::before {
+    content: "色見本：ナイトモード";
   }
   & .box {
     margin-top: var(--box-v-gap);
@@ -1707,7 +1885,7 @@ input[type="submit"]:hover {
   .night & .night .box {
     box-shadow: 1px 1px 2px 0px #ccc;
   }
-  .night &.night .box h2 {
+  .night & .night .box h2 {
     text-shadow: 0px 0px .3em #fff;
   }
 
@@ -1785,6 +1963,96 @@ input[type="submit"]:hover {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+#text-rule {
+  section {
+    margin-top: .5em;
+  }
+  hr {
+    margin: 1em 0;
+  }
+  dl {
+    display: grid;
+    grid-template-columns: minmax(3em, max-content) 1fr;
+    border-width: 0 0 1px;
+    border-style: dotted;
 
+    dl + & { margin-top: 0; }
+    &:has(+ dl) { margin-bottom: 0; }
+    > dt {
+      position: relative;
+
+      &::after {
+        content: "：";
+        position: absolute;
+        right: -1em;
+      }
+    }
+    > dd {
+      padding-left: 1em;
+      --dt-width: attr(data-dt-em em);
+      > dl {
+        grid-template-columns: minmax(var(--dt-width), max-content) 1fr;
+        margin-top: 0;
+        margin-left: 0;
+        &:last-child {
+          border-bottom: 0;
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+  .multiline-rule dl {
+    grid-template-columns: minmax(4em, max-content) 1fr;
+  }
+}
+
+
+/* // ローディング画面
+---------------------------------------------------------------------------------------------------- */
+#loading {
+  display: grid;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fffd;
+  .night & {
+    background: #000d;
+  }
+  z-index: 11;
+  transition: all 1s;
+}
+#loading::before {
+  content:'Loading...';
+  margin: auto auto 0;
+  font-weight: bold;
+}
+#loading-animation {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: transparent;
+}
+#loading-animation::before {
+  content: '';
+  position: absolute;
+  display: block;
+  width: auto;
+  height: 1px;
+  margin: 0;
+  background: linear-gradient(to right, transparent, oklch(50% 0.28 var(--theme-accent-hue)), transparent);
+  position: absolute;
+  animation: loading 2s infinite ease-out;
+}
+#loading.loaded {
+  opacity: 0;
+  visibility: hidden;
+}
+@keyframes loading {
+    0% { left:    0; right: 100%; }
+   50% { left:    0; right:    0;  }
+  100% { left: 100%; right:    0;  }
+}
 /* ////////// LayerEnd ////////// */
 }

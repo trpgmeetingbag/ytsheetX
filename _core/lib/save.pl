@@ -11,13 +11,13 @@ if($::in{base64mode}){
   foreach(keys %::in){
     next if $_ eq 'mode';
     next if !$_;
-    next if $_ =~ 'imageFile';
+    next if $_ =~ /^imageFile[0-9]*$/;
     $::in{$_} = decode('utf8', decode_base64($::in{$_}) );
   }
 }
 else {
   foreach(keys %::in){
-    next if $_ =~ /^(?:imageFile|imageCompressed)$/;
+    next if $_ =~ /^imageFile[0-9]*$/;
     $::in{$_} = decode('utf8', param($_))
   }
 }
@@ -28,65 +28,65 @@ our $mode_save = 1;
 
 our $mode = $::in{mode};
 our $pass = $::in{pass};
-our $new_id;
+our $newId;
 (our $edit_ver = $::in{ver}) =~ s/^([0-9]+)\.([0-9]+)\.([0-9]+)$/$1.$2$3/;
 
+## 管理者モード判定
+my $hasMasterKey;
+if(($set::masterid && $LOGIN_ID eq $set::masterid) || ($set::masterkey && $pass eq $set::masterkey)){
+  $hasMasterKey = 1;
+}
+
 ## パスワードチェック
-if($::in{protect} eq 'password'){
-  if ($pass eq ''){ infoJson('error','パスワードが入力されていません。'); }
+if($::in{protect} eq 'password' && !$hasMasterKey){
+  if ($pass eq ''){ error('400:パスワードが入力されていません。'); }
   else {
-    if ($pass =~ /[^0-9A-Za-z\.\-\/]/) { infoJson('error','パスワードに使える文字は、半角の英数字とピリオド、ハイフン、スラッシュだけです。'); }
+    if ($pass =~ /[^0-9A-Za-z\.\-\/]/) { error('400:パスワードに使える文字は、半角の英数字とピリオド、ハイフン、スラッシュだけです。'); }
   }
 }
 ## 新規作成時処理
 if ($mode eq 'make'){
   ##ログインチェック
   if($set::user_reqd && !$LOGIN_ID) {
-    infoJson('error','ログインしていません。');
+    error('401:ログインしていません。');
   }
   
   ## 登録キーチェック
   if(!$set::user_reqd && $set::registerkey && $set::registerkey ne $::in{registerkey}){
-    infoJson('error','登録キーが一致しません。');
+    error('400:登録キーが一致しません。');
   }
   
+  open (my $LIST, '<', $set::passfile);
+  my %ids = map { (/^([^<]+)</)[0] => 1; } <$LIST>;
+  close ($LIST);
+  if(open (my $DEL, '<', $set::data_dir.'/deleted.cgi')){
+    $ids{ (/^([^<]+)</)[0] } = 1 while <$DEL>;
+    close ($DEL);
+  }
   ## ID生成
   if($set::id_type && $LOGIN_ID){
     my $type = (exists $set::lib_type{$::in{type}}) ? $::in{type} : '';
-    my $i = 1;
-    $new_id = $LOGIN_ID.'-'.$type.sprintf("%03d",$i);
-    # 重複チェック
-    while (overlapCheck($new_id)) {
+    my $i = 0;
+    while (1) {
       $i++;
-      $new_id = $LOGIN_ID.'-'.$type.sprintf("%03d",$i);
+      $newId = $LOGIN_ID.'-'.$type.sprintf("%03d",$i);
+      last unless $ids{$newId};
     }
   }
   else {
-    $new_id = random_id(6);
-    # 重複チェック
-    while (overlapCheck($new_id)) {
-      $new_id = random_id(6);
+    while (1) {
+      $newId = randomId(6);
+      last unless $ids{$newId};
     }
   }
-}
-
-## 重複チェックサブルーチン
-sub overlapCheck {
-  my $id = shift;
-  my $flag;
-  open (my $FH, '<', $set::passfile);
-  while (my $line = <$FH>){ 
-    if(index($line, "$id<") == 0){ $flag = 1; }
-  }
-  close ($FH);
-  return $flag;
 }
 
 ### データ処理 #################################################################################
 my %pc = %::in;
 delete $pc{imageFile};
-delete $pc{imageCompressed};
-if($main::new_id){ $pc{id} = $main::new_id; }
+delete @pc{ grep { /^imageFile[0-9]+$/ } keys %pc };
+delete @pc{ grep { /^editing/ } keys %pc };
+if($main::newId){ $pc{id} = $main::newId; }
 ## 現在時刻
 our $now = time;
 ## 最終更新
@@ -98,65 +98,66 @@ if($mode eq 'make'){
   $pc{birthTime} = $file = $now;
 }
 elsif($mode eq 'save'){
-  (undef, undef, $file, undef) = getfile($pc{id},$pc{pass},$LOGIN_ID);
-  if(!$file){ infoJson('error','編集権限がありません。'); }
+  $file = (authSheet($pc{id},$pc{pass},$LOGIN_ID))[0];
+  if(!$file){ error('404:シートが存在しないか、編集権限がありません。'); }
 }
 
-our $newline;
+our $updatedLine;
 require $set::lib_calc_char;
-my $data_dir = $set::char_dir;
-my $listfile = $set::listfile;
+my $dataDir = $set::char_dir;
 
 ## 保存数チェック
 my $max_files = 32000;
 if($mode eq 'make' && $pc{protect} ne 'account'){
-  opendir my $dh, "${data_dir}anonymous/";
+  opendir my $dh, "${dataDir}anonymous/";
   my $num_files = () = readdir($dh);
   if($num_files-2 >= $max_files){
-    infoJson('error','現在、サーバーの許容量の都合により、ユーザーアカウントに紐づけされていないシートを新規作成できません。\nアカウント登録・ログインをし、編集保護設定で「アカウントに紐付ける」を選択して保存してください。\nすでにログイン中であっても、「アカウントに紐づける」設定での保存しかできません。');
+    error('503:現在、サーバーの許容量の都合により、ユーザーアカウントに紐づけされていないシートを新規作成できません。\nアカウント登録・ログインをし、編集保護設定で「アカウントに紐付ける」を選択して保存してください。\nすでにログイン中であっても、「アカウントに紐づける」設定での保存しかできません。');
     require $set::lib_edit; exit;
   }
 }
 if($mode eq 'save' && $pc{protect} ne 'account' && $pc{protectOld} eq 'account'){
-  opendir my $dh, "${data_dir}anonymous/";
+  opendir my $dh, "${dataDir}anonymous/";
   my $num_files = () = readdir($dh);
   if($num_files-2 >= $max_files){
-    infoJson('error','現在、サーバーの許容量の都合により、ユーザーアカウントに紐づけされていないシートを新規作成できません。\nアカウントに紐づけないデータをこれ以上増やせないため、紐づけ済みのシートの保護設定を変更できません。');
+    error('503:現在、サーバーの許容量の都合により、ユーザーアカウントに紐づけされていないシートを新規作成できません。\nアカウントに紐づけないデータをこれ以上増やせないため、紐づけ済みのシートの保護設定を変更できません。');
   }
 }
-
-## データ計算
-%pc = data_calc(\%pc);
 
 ### 画像アップロード --------------------------------------------------
-my $oldext;
-if($pc{imageDelete}){
-  $oldext = $pc{image};
-  $pc{image} = '';
-}
-use MIME::Base64;
-my $imagedata; my $imageflag;
-if($::in{imageCompressed} || $::in{imageFile}){
-  my $mime;
-  # 縮小済み
-  if($::in{imageCompressed}){
-    $imagedata = decode_base64( (split ',', $::in{imageCompressed})[1] );
-    $mime = $::in{imageCompressedType};
+my $imageMaxCount = $set::image_maxcount || 1;
+$imageMaxCount = 1 if $imageMaxCount < 1;
+my %oldext;
+my %imageData;
+my %imageSizeOk;
+my %imageAccepted;
+my %imageDelete;
+for my $imageNo (1 .. $imageMaxCount){
+  my $suffix = imageSuffix($imageNo);
+  my $imageKey = "image$suffix";
+  my $deleteKey = "imageDelete$suffix";
+  my $fileKey = "imageFile$suffix";
+  my $updateKey = "imageUpdate$suffix";
+  if($pc{$deleteKey}){
+    $imageDelete{$imageNo} = 1;
+    $oldext{$imageNo} = $pc{$imageKey};
+    $pc{$imageKey} = '';
+    $pc{mainImage} = '' if ($pc{mainImage} || 1) == $imageNo;
   }
-  # オリジナル
-  elsif($::in{imageFile}){
-    my $imagefile = $::in{imageFile}; # ファイル名の取得
-    $mime = uploadInfo($imagefile)->{'Content-Type'}; # MIMEタイプの取得
-    
-    # ファイルの受け取り
-    my $buffer;
-    while(my $bytesread = read($imagefile, $buffer, 2048)) {
-      $imagedata .= $buffer;
-    }
+  next if !$::in{$fileKey};
+
+  my $mime;
+  my $imagefile = $::in{$fileKey}; # ファイル名の取得
+  $mime = uploadInfo($imagefile)->{'Content-Type'}; # MIMEタイプの取得
+
+  # ファイルの受け取り
+  my $buffer;
+  while(my $bytesread = read($imagefile, $buffer, 2048)) {
+    $imageData{$imageNo} .= $buffer;
   }
   # サイズチェック
   my $max_size = ( $set::image_maxsize ? $set::image_maxsize : 1024 * 1024 );
-  if (length($imagedata) <= $max_size){ $imageflag = 1; }
+  if (length($imageData{$imageNo}) <= $max_size){ $imageSizeOk{$imageNo} = 1; }
 
   # MIME-type -> 拡張子
   my $ext; 
@@ -168,22 +169,35 @@ if($::in{imageCompressed} || $::in{imageFile}){
   elsif ($mime eq "image/webp")  { $ext ="webp"; } #WebP
 
   # 通して良しなら
-  if($imageflag && $ext){
-    $oldext = $pc{image} || $oldext;
-    $pc{image} = $ext;
-    $pc{imageUpdate} = time;
+  if($imageSizeOk{$imageNo} && $ext){
+    $oldext{$imageNo} = $pc{$imageKey} || $oldext{$imageNo};
+    $pc{$imageKey} = $ext;
+    $pc{$updateKey} = time;
+    $imageAccepted{$imageNo} = 1;
+    $pc{mainImage} ||= $imageNo;
   }
+}
+$pc{mainImage} = 1 if !$pc{mainImage} || $pc{mainImage} !~ /^[0-9]+$/ || $pc{mainImage} > $imageMaxCount;
+if(!$pc{'image'.imageSuffix($pc{mainImage})}){
+  for my $imageNo (1 .. $imageMaxCount){
+    if($pc{'image'.imageSuffix($imageNo)}){ $pc{mainImage} = $imageNo; last; }
+  }
+}
+for my $imageNo (1 .. $imageMaxCount){
+  delete $pc{'imageDelete'.imageSuffix($imageNo)};
 }
 
 
-### 保存 #############################################################################################
-my $mask = umask 0;
+## データ計算 --------------------------------------------------
+%pc = dataCalc(\%pc);
 
+
+### 保存 #############################################################################################
 ## 二重投稿チェック
 if ($mode eq 'make'){
   my $_token = $::in{_token};
-  if(!token_check($_token)){
-    infoJson('error','セッションの有効期限が切れたか、二重投稿です。一覧やマイリストを確認してください。');
+  if(!checkToken($_token)){
+    error('400:セッションの有効期限が切れたか、二重投稿です。一覧やマイリストを確認してください。');
   }
 }
 ### 個別データ保存 --------------------------------------------------
@@ -193,81 +207,96 @@ delete $pc{_token};
 delete $pc{registerkey};
 $pc{IP} = $ENV{'REMOTE_ADDR'};
 ### passfile --------------------------------------------------
-if (!-d $set::data_dir){ mkdir $set::data_dir or infoJson('error',"データディレクトリ($set::data_dir)の作成に失敗しました。"); }
-if (!-d $data_dir){ mkdir $data_dir or infoJson('error',"データディレクトリ($data_dir)の作成に失敗しました。"); }
-my $user_dir;
+if (!-d $set::data_dir){ mkdir $set::data_dir or error("500:データディレクトリ($set::data_dir)の作成に失敗しました。"); }
+ensureHtaccessDenied($set::data_dir);
+if (!-d $dataDir){ mkdir $dataDir or error("500:データディレクトリ($dataDir)の作成に失敗しました。"); }
+my $userDir;
 ## 新規
 if($mode eq 'make'){
-  $user_dir = passfileWriteMake($pc{id},$pass,$LOGIN_ID,$pc{protect},$now,$data_dir);
+  $userDir = appendPassFile($pc{id},$pass,$LOGIN_ID,$pc{protect},$now);
+  dataSave('make', $dataDir, $file, $pc{protect}, $userDir, {
+    imageData     => \%imageData,
+    imageAccepted => \%imageAccepted,
+    imageDelete   => \%imageDelete,
+  });
 }
 ## 更新
 elsif($mode eq 'save'){
-  if($pc{protect} ne $pc{protectOld}
-    || ($set::masterid && $LOGIN_ID eq $set::masterid)
-    || ($set::masterkey && $pass eq $set::masterkey)
-  ){
-    $user_dir = passfileWriteSave($pc{id},$pass,$LOGIN_ID,$pc{protect},$data_dir);
+  if($pc{protect} ne $pc{protectOld} || $hasMasterKey){
+    $userDir = updatePassFile($pc{id},$pass,$LOGIN_ID,$pc{protect},$dataDir);
   }
   else {
-    $user_dir = ($pc{protect} eq 'account' && $LOGIN_ID) ? "_${LOGIN_ID}/" : 'anonymous/';
+    $userDir = ($pc{protect} eq 'account' && $LOGIN_ID) ? "_${LOGIN_ID}/" : 'anonymous/';
   }
-  dataSave('save', $data_dir, $file, $pc{protect}, $user_dir);
+  dataSave('save', $dataDir, $file, $pc{protect}, $userDir, {
+    imageData     => \%imageData,
+    imageAccepted => \%imageAccepted,
+    imageDelete   => \%imageDelete,
+  });
 }
 ### 一覧データ更新 --------------------------------------------------
-listSave($listfile, $newline);
+updateListFile($updatedLine);
 
-### 画像アップ更新 --------------------------------------------------
-if($pc{imageDelete}){
-  unlink "${data_dir}${user_dir}${file}/image.$pc{image}"; # ファイルを削除
+### 画像アップデート --------------------------------------------------
+my %newImageData;
+for my $imageNo (1 .. $imageMaxCount){
+  my $suffix = imageSuffix($imageNo);
+  my $imageKey = "image$suffix";
+  if($imageDelete{$imageNo} && $oldext{$imageNo}){
+    deleteSheetFile("${dataDir}${userDir}", $file, "image$suffix.$oldext{$imageNo}"); # ファイルを削除
+    $newImageData{$imageNo} = { ext => '', update => '' };
+  }
+  if($imageSizeOk{$imageNo} && $pc{$imageKey}){
+    if($oldext{$imageNo} && $oldext{$imageNo} ne $pc{$imageKey}){
+      deleteSheetFile("${dataDir}${userDir}", $file, "image$suffix.$oldext{$imageNo}"); # 前のファイルを削除
+    }
+    updateSheetFile("${dataDir}${userDir}", $file, "image$suffix.$pc{$imageKey}", $imageData{$imageNo});
+    $newImageData{$imageNo} = { ext => $pc{$imageKey}, update => $pc{"imageUpdate$suffix"} };
+  }
 }
-if($imageflag && $pc{image}){
-  unlink "${data_dir}${user_dir}${file}/image.$oldext"; # 前のファイルを削除
-  open(my $IMG, ">", "${data_dir}${user_dir}${file}/image.$pc{image}");
-  binmode($IMG);
-  print $IMG $imagedata;
-  close($IMG);
-}
-
 
 
 ### 保存後処理 ######################################################################################
 ### キャラシートへ移動／編集画面に戻る --------------------------------------------------
 if($edit_ver < 1.18012){
-  print "Location: ./?id=".(${new_id} || $pc{id})."\n\n";
+  print "Location: ./?id=".($newId || $pc{id})."\n\n";
   exit;
 }
 if($mode eq 'make'){
-  infoJson('make',$new_id);
+  infoJson('make',$newId);
 }
 else {
-  infoJson('ok','保存しました。')
+  infoJson('ok','保存しました。', { newImageData => \%newImageData })
 }
-
-
 
 
 ### サブルーチン ###################################################################################
-use File::Copy qw/move/;
-
 sub dataSave {
   my $mode = shift;
   my $dir  = shift;
   my $file = shift;
   my $protect = shift;
-  my $user_dir = shift;
+  my $userDir = shift;
+  my $imageOpt = shift || {};
+  my $archiveImageData     = $imageOpt->{imageData}     || {};
+  my $archiveImageAccepted = $imageOpt->{imageAccepted} || {};
+  my $archiveImageDelete   = $imageOpt->{imageDelete}   || {};
 
-  if (!-d "${dir}${user_dir}"){
-    mkdir "${dir}${user_dir}" or infoJson('error',"データディレクトリの作成に失敗しました。");
+  if (!-d "${dir}${userDir}"){
+    mkdir "${dir}${userDir}" or error("500:データディレクトリの作成に失敗しました。");
   }
-  if (!-d "${dir}${user_dir}${file}"){
+  if (!-d "${dir}${userDir}${file}"){
     if($mode eq 'save' && -d "${dir}${file}"){ #v1.14/v1.20のコンバート処理
-      move("${dir}${file}", "${dir}${user_dir}${file}") or infoJson('error',"データディレクトリの移動に失敗しました。");
+      move("${dir}${file}", "${dir}${userDir}${file}") or error("500:データディレクトリの移動に失敗しました。");
     }
     else {
-      mkdir "${dir}${user_dir}${file}" or infoJson('error',"データファイルの作成に失敗しました。");
+      mkdir "${dir}${userDir}${file}" or error("500:データファイルの作成に失敗しました。");
     }
   }
-  $dir .= $user_dir;
+  $dir .= $userDir;
+
+  my $logListContent = '';
+  my $logsContent = readSheetFile($dir, $file, 'logs.cgi') // '';
 
   ## バックアップ作成
   if($mode eq 'save'){
@@ -276,42 +305,39 @@ sub dataSave {
     my $interval_short = 60 * ($set::log_interval_short || 15);
     
     my $latest_epoc;
-    my %log_name;
-    my %log_save;
-    my @log_list;
+    my %logName;
+    my %logSave;
+    my @logList;
     my $delete_flag;
-    if(!-f "${dir}${file}/log-list.cgi"){ logFileCheck("${dir}${file}") }
-    open (my $FH, "${dir}${file}/log-list.cgi");
-    flock($FH, 1);
-    while (<$FH>){
+    if(!sheetFileExists($dir, $file, 'log-list.cgi')){ checkLogFile("${dir}${file}") }
+    foreach (readSheetFileLines $dir, $file, 'log-list.cgi'){
       chomp;
       my ($date, $epoc, $name) = split('<>', $_, 3);
-      if($name){ $log_name{$date} = $name; }
+      if($name){ $logName{$date} = $name; }
       if($date eq 'latest'){
         $latest_epoc = $epoc;
       }
       else {
-        push(@log_list, { date => $date, epoc => $epoc, name => $name });
+        push(@logList, { date => $date, epoc => $epoc, name => $name });
       }
     }
-    close($FH);
-    $latest_epoc ||= (stat("${dir}${file}/data.cgi"))[9];
+    $latest_epoc ||= sheetFileMTime($dir, $file, 'data.cgi');
     my $latest_date = epocToDateQuery($latest_epoc);
     
     if($now - $latest_epoc > 3){ #3秒未満の連続更新は処理を飛ばす
       my $before_saved = 0;
-      foreach my $i (0 .. $#log_list){
-        my $epoc = $log_list[$i]{epoc};
-        my $next = $log_list[$i+1]{epoc} || $latest_epoc;
+      foreach my $i (0 .. $#logList){
+        my $epoc = $logList[$i]{epoc};
+        my $next = $logList[$i+1]{epoc} || $latest_epoc;
         if (
           $now - $epoc <= $lately_term ||
-          $log_list[$i]{name} ne '' ||
+          $logList[$i]{name} ne '' ||
           $next - $epoc >= $interval_long ||
           ($next - $epoc >= $interval_short &&
            $epoc - $before_saved >= $interval_long)
         ){
           $before_saved = $epoc;
-          $log_save{ $log_list[$i]{date} } = $epoc;
+          $logSave{ $logList[$i]{date} } = $epoc;
         }
         else {
           $delete_flag = 1
@@ -319,165 +345,188 @@ sub dataSave {
       }
 
       # set::log_max 以上を削除
-      if($set::log_max && scalar(keys %log_save) >= $set::log_max){
-        my $max_over = scalar(keys %log_save)+1 - $set::log_max;
-        foreach (sort keys %log_save){
+      if($set::log_max && scalar(keys %logSave) >= $set::log_max){
+        my $max_over = scalar(keys %logSave)+1 - $set::log_max;
+        foreach (sort keys %logSave){
           if($max_over <= 0){ last; }
-          if(!exists $log_name{$_}){ delete $log_save{$_}; $delete_flag = 1; $max_over--; }
+          if(!exists $logName{$_}){ delete $logSave{$_}; $delete_flag = 1; $max_over--; }
         }
       }
-    
+
+      my $dataContent = readSheetFile($dir, $file, 'data.cgi') // '';
       # data => logs (削除あり)
       if($delete_flag){
-        sysopen(my $BU,"${dir}${file}/logs.cgi", O_RDWR | O_CREAT, 0666);
-        flock($BU, 2);
-        my @lines = <$BU>;
-        seek($BU, 0, 0);
-
+        my @lines = split(/(?<=\n)/, $logsContent);
+        $logsContent = '';
         my $cut = 0;
         foreach (@lines) {
           if (index($_, "=") == 0){
             $cut = 0;
             if($_ =~ /^=(.+?)=/){
-              if(!$log_save{$1}){ $cut = 1; }
+              if(!$logSave{$1}){ $cut = 1; }
             }
           }
-          print $BU $_ if !$cut;
+          $logsContent .= $_ if !$cut;
         }
-
-        print $BU "=${latest_date}=\n";
-        open (my $IN, '<', "${dir}${file}/data.cgi");
-        flock($IN, 2);
-        print $BU $_ while (<$IN>);
-        close($IN);
-
-        truncate($BU, tell($BU));
-        close($BU);
       }
-      # data => logs (追記のみ)
-      else {
-        open (my $IN, '<', "${dir}${file}/data.cgi");
-        sysopen (my $BU, "${dir}${file}/logs.cgi", O_WRONLY | O_APPEND | O_CREAT, 0666);
-        flock($BU, 2);
-        print $BU "=${latest_date}=\n";
-        print $BU $_ while (<$IN>);
-        close($BU);
-        close($IN);
-      }
+
+      $logsContent .= "=${latest_date}=\n";
+      $logsContent .= $dataContent;
+      $logsContent .= "\n" if $dataContent ne '' && $dataContent !~ /\n\z/;
       
-      sysopen (my $BUL, "${dir}${file}/log-list.cgi", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-      flock($BUL, 2);
-      print $BUL "$_<>$log_save{$_}<>$log_name{$_}\n" foreach (sort keys %log_save);
-      print $BUL "${latest_date}<>${latest_epoc}<>$log_name{latest}\n";
-      print $BUL "latest<>${now}<>\n";
-      close($BUL);
+      $logListContent .= "$_<>$logSave{$_}<>$logName{$_}\n" foreach (sort keys %logSave);
+      $logListContent .= "${latest_date}<>${latest_epoc}<>$logName{latest}\n";
+      $logListContent .= "latest<>${now}<>\n";
+    }
+    else {
+      $logListContent = readSheetFile($dir, $file, 'log-list.cgi') // '';
     }
   }
   elsif($mode eq 'make'){
-    sysopen (my $BUL, "${dir}${file}/log-list.cgi", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-    flock($BUL, 2);
-    print $BUL "latest<>${now}<>\n";
-    close($BUL);
+    $logListContent = "latest<>${now}<>\n";
   }
 
   ## data.cgi保存／更新
-  sysopen (my $DD, "${dir}${file}/data.cgi", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-  flock($DD, 2);
-  print $DD "ver<>",$main::ver,"\n";
+  my $dataContent = "ver<>$main::ver\n";
   foreach (sort keys %pc){
-    if($pc{$_} ne "") { print $DD "$_<>$pc{$_}\n"; }
+    if($pc{$_} ne "") { $dataContent .= "$_<>$pc{$_}\n"; }
   }
-  close($DD);
-}
 
-sub passfileWriteMake {
-  my ($id, $pass ,$LOGIN_ID, $protect, $now, $data_dir) = @_;
-  sysopen (my $FH, $set::passfile, O_RDWR | O_APPEND | O_CREAT, 0666);
-  flock($FH, 2);
-  my @list = <$FH>;
-  foreach (@list){
-    if ($_ =~ /^(?:[^<]*?<>){2}$now</){
-      close($FH);
-      infoJson('error','新規作成が衝突しました。再度保存してください。');
+  my %archive = (
+    'data.cgi'     => $dataContent,
+    'logs.cgi'     => $logsContent,
+    'log-list.cgi' => $logListContent,
+  );
+  foreach my $ext (qw(png jpg jpeg gif webp)){
+    foreach my $imageNo (1 .. ($set::image_maxcount || 1)){
+      my $suffix = imageSuffix($imageNo);
+      my $imageKey = "image$suffix";
+      if($archiveImageAccepted->{$imageNo}){
+        next if $pc{$imageKey} ne $ext;
+        $archive{"image$suffix.$ext"} = $archiveImageData->{$imageNo};
+        next;
+      }
+      next if $archiveImageDelete->{$imageNo};
+      my $image = readSheetFileBinary($dir, $file, "image$suffix.$ext");
+      $archive{"image$suffix.$ext"} = $image if defined $image;
     }
   }
-  my $passwrite; my $user_dir;
-  if   ($protect eq 'account'&& $LOGIN_ID) { $passwrite = '['.$LOGIN_ID.']'; $user_dir = '_'.$LOGIN_ID.'/'; }
-  elsif($protect eq 'password')            { $passwrite = e_crypt($pass); }
-  $user_dir ||= 'anonymous/';
-  dataSave('make', $data_dir, $file, $protect, $user_dir);
-  print $FH "$id<>$passwrite<>$now<>".$::in{type}."<>\n";
-  close($FH);
-  return $user_dir;
+  saveSheetArchive($dir, $file, \%archive);
 }
 
-sub passfileWriteSave {
-  my ($id, $pass ,$LOGIN_ID, $protect, $dir) = @_;
-  my $move; my $old_dir; my $new_dir; my $file;
-  sysopen (my $FH, $set::passfile, O_RDWR);
-  flock($FH, 2);
-  my @list = <$FH>;
-  seek($FH, 0, 0);
-  foreach (@list){
-    if(index($_, "$id<") == 0){
-      my @data = split /<>/;
-      $file = $data[2];
-      my $passwrite = $data[1];
-      if($passwrite =~ /^\[(.+?)\]$/){ $old_dir = '_'.$1.'/'; }
-      if   ($protect eq 'account')  {
-        if($passwrite !~ /^\[.+?\]$/) {
-          $passwrite = '['.$LOGIN_ID.']';
-          $move = 1;
-          $new_dir = '_'.$LOGIN_ID.'/';
+sub appendPassFile {
+  my ($id, $pass ,$LOGIN_ID, $protect, $now) = @_;
+  
+  my $userDir;
+  appendFile($set::passfile, sub {
+    my ($WRITE) = @_;
+    # 衝突チェック
+    if(open (my $READ, '<', $set::passfile)){
+      foreach (<$READ>){
+        if ($_ =~ /^(?:[^<]*<>){2}$now</){
+          close($READ);
+          error('409:新規作成が衝突しました。再度保存してください。');
         }
       }
-      elsif($protect eq 'password') {
-        if(!$passwrite || $passwrite =~ /^\[.+?\]$/) { $passwrite = e_crypt($pass); }
-        if($old_dir) { $move = 1; }
-      }
-      elsif($protect eq 'none') {
-        $passwrite = '';
-        if($old_dir) { $move = 1; }
-      }
-      $_ = "$data[0]<>$passwrite<>$data[2]<>$data[3]<>\n";
+      close($READ);
     }
-  }
-  $old_dir ||= 'anonymous/';
-  $new_dir ||= 'anonymous/';
-  my $user_dir;
-  if($move){
-    if(!-d "${dir}${new_dir}"){ mkdir "${dir}${new_dir}" or infoJson('error',"データディレクトリの作成に失敗しました。"); }
-    move("${data_dir}${old_dir}${file}", "${data_dir}${new_dir}${file}") or infoJson('error',"データディレクトリの移動に失敗しました。（${old_dir}⇒${new_dir}）");
-    $user_dir = $new_dir;
-  }
-  else {
-    $user_dir = $old_dir;
-  }
-  print $FH $_ foreach @list;
-  truncate($FH, tell($FH));
-  close($FH);
+    # パスワードハッシュ化＆ディレクトリ確定
+    my $passwrite;
+    if   ($protect eq 'account' && $LOGIN_ID){ $passwrite = '['.$LOGIN_ID.']'; $userDir = '_'.$LOGIN_ID.'/'; }
+    elsif($protect eq 'password')            { $passwrite = encrypt($pass); }
+    $userDir ||= 'anonymous/';
+    # 書込（追記）
+    print $WRITE "$id<>$passwrite<>$now<>".$::in{type}."<>\n";
+  });
 
-  return $user_dir;
+  return $userDir;
 }
 
-sub listSave {
-  my $listfile = shift;
-  my $newline  = shift;
-  sysopen (my $FH, $listfile, O_RDWR | O_CREAT, 0666);
-  flock($FH, 2);
-  my @list = <$FH>;
-  my @tmp = map { (split /<>/)[3] } @list;
-  @list = @list[sort {$tmp[$b] <=> $tmp[$a]} 0 .. $#tmp];
-  seek($FH, 0, 0);
-  print $FH "$newline\n";
-  foreach (@list){
-    if(index($_, "$pc{id}<") != 0){
-      print $FH $_;
+sub updatePassFile {
+  my ($id, $pass ,$LOGIN_ID, $protect, $dir) = @_;
+  
+  my $userDir;
+  overwriteFile($set::passfile, sub {
+    my ($READ, $WRITE) = @_;
+    # パスファイル読込
+    my @lines = <$READ>;
+    close($READ);
+    # データチェック
+    my $move; my $oldDir; my $newDir; my $sheet;
+    foreach (@lines){
+      if(index($_, "$id<") == 0){
+        my @data = split /<>/;
+        $sheet = $data[2];
+        my $passwrite = $data[1];
+        if($passwrite =~ /^\[(.+?)\]$/){ $oldDir = '_'.$1.'/'; }
+        if   ($protect eq 'account')  {
+          if($passwrite !~ /^\[.+?\]$/) {
+            $passwrite = '['.$LOGIN_ID.']';
+            $move = 1;
+            $newDir = '_'.$LOGIN_ID.'/';
+          }
+        }
+        elsif($protect eq 'password') {
+          if(!$passwrite || $passwrite =~ /^\[.+?\]$/) { $passwrite = encrypt($pass); }
+          if($oldDir) { $move = 1; }
+        }
+        elsif($protect eq 'none') {
+          $passwrite = '';
+          if($oldDir) { $move = 1; }
+        }
+        $_ = "$data[0]<>$passwrite<>$data[2]<>$data[3]<>\n";
+      }
     }
-  }
-  truncate($FH, tell($FH));
-  close($FH);
+    $oldDir ||= 'anonymous/';
+    $newDir ||= 'anonymous/';
+    if($move){
+      if(!-d "${dir}${newDir}"){ mkdir "${dir}${newDir}" or return("500:データディレクトリの作成に失敗しました。//save".__LINE__); }
+      if(-d "${dataDir}${oldDir}${sheet}"){
+        move("${dataDir}${oldDir}${sheet}", "${dataDir}${newDir}${sheet}") or return("500:データディレクトリの移動に失敗しました。（${oldDir}⇒${newDir}）//save".__LINE__);
+      }
+      if(-f "${dataDir}${oldDir}${sheet}.zip"){
+        move("${dataDir}${oldDir}${sheet}.zip", "${dataDir}${newDir}${sheet}.zip") or return("500:ZIPファイルの移動に失敗しました。（${oldDir}⇒${newDir}）//save".__LINE__);
+      }
+      $userDir = $newDir;
+    }
+    else {
+      $userDir = $oldDir;
+    }
+    # 書込
+    print $WRITE @lines;
+  });
+
+  return $userDir;
 }
 
+sub updateListFile {
+  my $updatedLine  = shift;
+
+  overwriteFile($set::listfile, sub {
+    my ($READ, $WRITE) = @_;
+
+    print $WRITE "$updatedLine\n";
+    
+    foreach (<$READ>){
+      if(index($_, "$pc{id}<") == 0){ next; }
+      else { print $WRITE $_; }
+    }
+  });
+}
+
+sub setUpdatatLineImage {
+  my $pc = $_[0];
+  my @data;
+
+  foreach my $n (1 .. $set::image_maxcount){
+    my $s = imageSuffix($n);
+    if($pc->{"image$s"} && !$pc->{"imageHide$s"}){
+      push(@data,
+        $n.($pc->{"imageSpoiler$s"} ? escapeThanSign(qq|+$pc->{"imageSpoiler$s"}|) : '')
+      );
+    }
+  }
+  return join(',', @data);
+}
 
 1;

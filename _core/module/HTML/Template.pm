@@ -24,7 +24,7 @@ For example, test.tmpl:
 
 Now you can use it in a small CGI program:
 
-    #!C:/xampp/perl/bin/perl.exe -w
+    #!/usr/bin/perl -w
     use HTML::Template;
 
     # open the html template

@@ -16,61 +16,64 @@ my $log = $::in{log};
 my $id  = $::in{id};
 my $url = $::in{url};
 
-my ($file, $type,$author);
+my ($file, $type, $author);
 my %pc = ();
 if($id){
-  ($file, $type, $author) = getfile_open($id);
+  ($file, $type, $author) = findSheet($id);
 
   changeFileByType($type);
   my $dir = $set::char_dir;
 
   my $datatype = ($::in{log}) ? 'logs' : 'data';
-  my $hit = 0;
-  open my $IN, '<', "${dir}${file}/${datatype}.cgi" or error('データがありません');
-  while (<$IN>){
-    if($datatype eq 'logs'){
-      if (index($_, "=") == 0){
-        if (index($_, "=$::in{log}=") == 0){ $hit = 1; next; }
-        if ($hit){ last; }
-      }
-      if (!$hit) { next; }
-    }
+  foreach (readSheetRecordLines $dir, $file, $datatype, $::in{log}){
     chomp $_;
     my ($key, $value) = split(/<>/, $_, 2);
     $pc{$key} = $value;
   }
-  close($IN);
-  if($datatype eq 'logs' && !$hit){ error("過去ログ（$::in{log}）が見つかりません。"); }
   
+  if($::in{log}){
+    %pc = (%pc, getLatestData($dir, $file,
+      'protect','forbidden','hide',
+      ( map {
+        my $s = imageSuffix($_);
+        "image$s","imageUpdate$s","imageFit$s","imagePercent$s","imagePositionX$s","imagePositionY$s","imageCopyright$s","imageCopyrightURL$s","imageSpoiler$s",
+      } 1 .. $set::image_maxcount)
+    ));
+  }
   if($pc{forbidden}){
     my $LOGIN_ID = check;
-    if($::in{log}){
-      ($pc{protect}, $pc{forbidden}) = getProtectType("${dir}${file}/data.cgi");
-    }
     unless(
       ($pc{protect} eq 'none') || 
       ($author && ($author eq $LOGIN_ID || $set::masterid eq $LOGIN_ID))
     ){
-      infoJson('error',"閲覧権限がありません。");
+      error("403:閲覧権限がありません。");
     }
   }
   
-  if($pc{image}){
-    $pc{imageURL} = url()."?id=$id&mode=image&cache=$pc{imageUpdate}";
+  my $imageMaxCount = $pc{imageMaxCount} = $set::image_maxcount || 1;
+  foreach my $n (1 .. $imageMaxCount){
+    my $suffix = imageSuffix($n);
+    $pc{"imageURL$suffix"} = url().qq|?id=$id&mode=image&imageNo=$n&cache=$pc{"imageUpdate$suffix"}| if $pc{"image$suffix"};
+  }
+  if(!$pc{image} && $pc{mainImage} > 1){ # 複数画像未対応verへの対応
+    my $suffix = imageSuffix($pc{mainImage});
+    foreach my $key (qw/image imageUpdate imageURL imageFit imagePercent imagePositionX imagePositionY imageCopyright imageCopyrightURL imageSpoiler words wordsX wordsY/){
+      $pc{$key} = $pc{"$key$suffix"};
+    }
   }
 
   $pc{sheetURL} = url()."?id=${id}";
 }
 elsif($::in{url}){
-  require $set::lib_convert;
-  %pc = dataConvert($::in{url});
+  eval { require $set::lib_convert; };
+  %pc = importSheetData($::in{url});
   $type = $pc{type};
   if(!$pc{ver}){
     require $set::lib_calc_char;
-    %pc = data_calc(\%pc);
+    %pc = dataCalc(\%pc);
   }
   foreach(keys %pc){
-    $pc{$_} = pcEscape($pc{$_});
+    $pc{$_} = escapePcData($pc{$_});
     delete $pc{$_} if($pc{$_} eq '');
   }
 }
@@ -78,6 +81,13 @@ elsif($::in{url}){
 
 if($pc{ver} ne '') {
   $pc{result} = "OK";
+  if(defined &upgradeData){
+    %pc = upgradeData(\%pc, $type);
+  }
+  elsif(defined &upgradeCharaData){
+    %pc = upgradeCharaData(\%pc);
+  }
+
   if($set::lib_json_sub){
     require $set::lib_json_sub;
     %pc = %{ addJsonData(\%pc , $type , $::in{target} || '') };
@@ -86,9 +96,9 @@ if($pc{ver} ne '') {
 }
 else {
   if($log eq "") {
-    $pc{result} = "リクエストされたシートは見つかりませんでした。(id: ${id})";
+    error "404:リクエストされたシートは見つかりませんでした。(id: ${id})";
   } else {
-    $pc{result} = "リクエストされたシートは見つかりませんでした。(id: ${id}, log: ${log})";
+    error "404:リクエストされたシートは見つかりませんでした。(id: ${id}, log: ${log})";
   }
 }
 

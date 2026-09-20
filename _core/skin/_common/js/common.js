@@ -1,43 +1,115 @@
+const root = document.documentElement;
+const rootClass = root.classList;
 // ナイトモード
-const htmlClass = document.getElementsByTagName('html')[0].classList;
 let nightMode = localStorage.getItem("nightMode");
-if(nightMode == 1) { htmlClass.add('night'); }
-function nightModeChange() {
-  if(nightMode != 1) { htmlClass.add('night');nightMode = 1; }
-  else { htmlClass.remove('night'); nightMode = 0; }
+if(nightMode == 1) { rootClass.add('night'); }
+function toggleNightMode() {
+  if(nightMode != 1) { rootClass.add('night'); nightMode = 1; }
+  else               { rootClass.remove('night'); nightMode = 0; }
   localStorage.setItem("nightMode", nightMode);
 }
 // カラーカスタムON/OFF
 let colorlessMode = localStorage.getItem("colorlessMode");
-if(colorlessMode == 1) { htmlClass.add('colorless'); }
-function changeColorlessMode(){
-  if(colorlessMode != 1) { htmlClass.add('colorless');    colorlessMode = 1; }
-  else                   { htmlClass.remove('colorless'); colorlessMode = 0; }
+if(colorlessMode == 1) { rootClass.add('colorless'); }
+function toggleColorlessMode(){
+  if(colorlessMode != 1) { rootClass.add('colorless');    colorlessMode = 1; }
+  else                   { rootClass.remove('colorless'); colorlessMode = 0; }
   localStorage.setItem("colorlessMode", colorlessMode);
 }
 window.addEventListener("DOMContentLoaded", () => {
   console.log('colorlessMode:'+colorlessMode);
-  const obj = document.querySelector('[onchange*=changeColorlessMode]') || '';
+  const obj = document.querySelector('[onchange*=toggleColorlessMode]') || '';
   if(obj && colorlessMode == 1){
     obj.checked = true;
   }
 })
 // ルビコピーON/OFF
 let rubyCopyMode = localStorage.getItem("rubyCopyMode") ?? 1;
-function changeRubyCopyMode(){
-  if(rubyCopyMode != 1) { rubyCopyMode = 1; }
-  else                  { rubyCopyMode = 0; }
+function toggleRubyCopyMode(){
+  rubyCopyMode = (rubyCopyMode != 1) ? 1 : 0;
   localStorage.setItem("rubyCopyMode", rubyCopyMode);
 }
 window.addEventListener("DOMContentLoaded", () => {
-  console.log('rubyCopyMode:'+rubyCopyMode)
-  const obj = document.querySelector('[onchange*=changeRubyCopyMode]') || ''
+  console.log('rubyCopyMode:'+rubyCopyMode);
+  const obj = document.querySelector('[onchange*=toggleRubyCopyMode]') || ''
   if(obj && rubyCopyMode == 1){
     obj.checked = true;
   }
 })
-// 検索フォーム
-function formSwitch(){
-  const viewMode = document.getElementById("form-search-area").style.display == 'none' ? 0 : 1;
-  document.getElementById("form-search-area").style.display = viewMode ? 'none' : '';
+// 1カラムモード
+let singleColumnMode = localStorage.getItem("singleColumnMode") ?? 0;
+function toggleSingleColumnMode(){
+  singleColumnMode = (singleColumnMode != 1) ? 1 : 0;
+  localStorage.setItem("singleColumnMode", singleColumnMode);
 }
+window.addEventListener("DOMContentLoaded", () => {
+  console.log('singleColumnMode:'+singleColumnMode);
+  const obj = document.querySelector('[onchange*=toggleSingleColumnMode]') || ''
+  if(obj && singleColumnMode == 1){
+    obj.checked = true;
+  }
+})
+// 18歳以上確認
+let hasDeclaredAdultAge = localStorage.getItem("hasDeclaredAdultAge") ?? 0;
+function declareAdultAge() {
+  hasDeclaredAdultAge = (hasDeclaredAdultAge != 1) ? 1 : 0;
+  localStorage.setItem("hasDeclaredAdultAge", hasDeclaredAdultAge);
+}
+window.addEventListener("DOMContentLoaded", () => {
+  console.log('hasDeclaredAdultAge:'+hasDeclaredAdultAge);
+  const obj = document.querySelector('[onchange*=declareAdultAge]') || ''
+  if(obj && hasDeclaredAdultAge == 1){
+    obj.checked = true;
+  }
+})
+// スポイラー表示モード
+let alwaysShowSpoilers = {
+  'R-18'   : localStorage.getItem("alwaysShowSpoilers:R-18")  ?? 0,
+  'R-18G'  : localStorage.getItem("alwaysShowSpoilers:R-18G") ?? 0,
+  sensitive: localStorage.getItem("alwaysShowSpoilers:sensitive") ?? 0,
+};
+function toggleSpoilerDisplayMode(type){
+  alwaysShowSpoilers[type] = (alwaysShowSpoilers[type] != 1) ? 1 : 0;
+  localStorage.setItem("alwaysShowSpoilers:"+type, alwaysShowSpoilers[type]);
+}
+window.addEventListener("DOMContentLoaded", () => {
+  console.log('alwaysShowSpoilers:',alwaysShowSpoilers);
+  document.querySelectorAll('[onchange*=toggleSpoilerDisplayMode]').forEach(obj => {
+    if(alwaysShowSpoilers[obj.dataset.type] == 1){
+      obj.checked = true;
+    }
+  });
+})
+// スクロール位置検知
+window.addEventListener('DOMContentLoaded', () => {
+  if (!document.querySelector('header nav')) return;
+
+  const sentinel = document.createElement('div');
+
+  sentinel.setAttribute('aria-hidden', 'true');
+  sentinel.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    visibility: hidden;
+    pointer-events: none;
+  `;
+
+  document.body.prepend(sentinel);
+
+  const observer = new IntersectionObserver(([entry]) => {
+    rootClass.toggle('is-scrolled', !entry.isIntersecting);
+  }, {
+    root: null,
+    rootMargin: '40px 0px 0px 0px',
+    threshold: 0
+  });
+
+  observer.observe(sentinel);
+
+  window.addEventListener('pageshow', () => {
+    rootClass.toggle('is-scrolled', window.scrollY > 40);
+  });
+});

@@ -14,7 +14,7 @@ package set;
   
 ## ●タイトル
  # ページ左上のタイトル
-  our $title = 'ゆとシートX for MGR(メタリックガーディアン)'
+  our $title = 'ゆとシートXX for MGR(メタリックガーディアン)';
   
 ## ●画像関係
  # キャラクター画像のファイルサイズ上限(単位byte)
@@ -47,9 +47,12 @@ package set;
   our $pagemax = 0;
 
 ## ●キャラクターシートの各種初期値
-  our $make_exp   = 0;  # 初期成長点
-  our $make_money = 500;  # 初期所持金
+  our $make_exp = 130;  # 初期経験点
   our $make_fix   = 0;  # 初期値を固定にする(PLが変更出来ないようにする)=1 しない=0
+
+ # コンバートしたいゆとシートⅠの '絶対URL' => 'ゆとシートⅡからの相対パス',
+  our %convert_url = (
+  );
 
 ## ●ログイン関係ファイル
  # ユーザー情報・ログイン状態はデフォルトでは別システム（別ディレクトリ）でも共通です。
@@ -57,8 +60,8 @@ package set;
  # our $userfile    = './data/users.cgi';       # ユーザー一覧ファイル
  # our $login_users = './data/login_users.cgi'; # ログイン情報保存ファイル
  # our $tokenfile   = './data/token.cgi';       # 一時トークン保存ファイル
-
-
+ 
+ 
 ## 上記以外の設定は lib/config-default.pl を参照してください。 ##
 
 1;

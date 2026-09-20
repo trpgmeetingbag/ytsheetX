@@ -1,0 +1,24 @@
+@charset "utf-8";
+
+:root{
+  --theme-main-hue: 280;
+  --theme-sub-hue: 280;
+  --theme-accent-hue: 26;
+  --header-lightness: 50%;
+  --menu-icon-current-color   : #e02030;
+  --menu-icon-current-bg-color: #000000;
+  --icon--current-color: var(--menu-icon-current-color);
+}
+.night {
+  --header-lightness: 27%;
+  --menu-icon-bg-color: oklch(40% 0.05 var(--theme-menu-hue));
+}
+body {
+  background-image: url(../../_common/img/back-pattern.png), url(../img/back-wheel.png);
+  @media screen and (width <= 735px){
+    background-size: auto, 70%;
+  }
+}
+html:not(.night) header nav .toggle-theme-button {
+  > .icon.night { color: #fff9; }
+}

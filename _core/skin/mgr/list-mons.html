@@ -1,10 +1,76 @@
-<article>
-  <h1>エネミー一覧</h1>
-  
-  <section class="list">
-    <div style="padding: 3em; text-align: center; background-color: var(--box-base-bg-color); border: 1px solid var(--box-outside-border-color); border-radius: 5px;">
-      <p>エネミーデータは現在準備中です。</p>
-      <p style="margin-top: 1em; font-size: 80%; opacity: 0.8;">※ここに将来的にエネミーの検索フォームやリストが表示されます。</p>
-    </div>
-  </section>
-</article>
+    <article>
+      <h1>エネミーデータ一覧</h1>
+      <a class="search-button" onclick="toggleHide('form-search')"></a>
+      <form method="get" action="./" name="search" id="form-search" class="hide">
+        <h3>検索条件</h3>
+        <input type="hidden" name="type" value="m">
+        <TMPL_IF LOGIN_ID><label class="mylist"><input type="checkbox" name="mode" value="mylist" <TMPL_IF modeMylist>checked</TMPL_IF>>マイリスト内を検索</label></TMPL_IF>
+        <dl>
+          <dt>タグ
+            <dd><input type="text" name="tag" value="<TMPL_VAR tag>">
+          <dt>名称
+            <dd><input type="text" name="name" value="<TMPL_VAR name>">
+          <dt>システム
+            <dd>
+              <select name="system">
+                <option value="all">すべて
+                <TMPL_LOOP SystemGroups>
+                  <option value="<TMPL_VAR NAME>" <TMPL_VAR SELECTED>><TMPL_VAR NAME>
+                </TMPL_LOOP>
+              </select>
+          <dt>分類
+            <dd><input type="text" name="taxa" value="<TMPL_VAR taxa>">
+          <dt>レベル
+            <dd><input type="number" name="lv-min" value="<TMPL_VAR lvMin>" style="width:5em;"> ～ <input type="number" name="lv-max" value="<TMPL_VAR lvMax>" style="width:5em;">
+          <dt>特技・加護
+            <dd><input type="text" name="skill_search" value="<TMPL_VAR skill_search>" placeholder="例：BOSS属性">
+        </dl>
+        <p class="right"><input type="submit" value="検索"></p>
+      </form>
+      <script src="<TMPL_VAR coreDir>/skin/_common/js/list.js?<TMPL_VAR ver>" defer></script>
+      <TMPL_IF searchSummary><dl class="search-summary"><dt>検索結果<dd><TMPL_VAR searchSummary></dl></TMPL_IF>
+      
+      <TMPL_LOOP Lists>
+      <section class="list monster">
+        <h2><TMPL_VAR NAME> <small><TMPL_VAR TEXT> (<TMPL_VAR NUM>)</small></h2>
+        <TMPL_VAR PAGER>
+        <TMPL_IF simpleList>
+        <ul>
+          <TMPL_LOOP Lines><li<TMPL_IF HIDE> class="hide"</TMPL_IF>>
+            <a href="./?id=<TMPL_VAR ID>" data-lv="<TMPL_VAR LV>"><TMPL_VAR NAME><small><TMPL_VAR AUTHOR></small></a>
+          </TMPL_LOOP>
+        </ul>
+        <TMPL_ELSE>
+        <table>
+          <thead>
+            <tr>
+              <th class="name"><span>名称</span>
+              <th class="author"><a href="./?<TMPL_VAR QUERYBASE><TMPL_VAR qLinks>&sort=author">製作者</a>
+              <th class="taxa"><span>種別</span>
+              <th class="level"><a href="./?<TMPL_VAR QUERYBASE><TMPL_VAR qLinks>&sort=lv"><span class="small">レベル</span></a>
+              <th class="system"><span>システム</span>
+              <th class="date"><a href="./?<TMPL_VAR QUERYBASE><TMPL_VAR qLinks>&sort=date">更新日時</a>
+          </thead>
+          <TMPL_LOOP Lines><tr<TMPL_IF HIDE> class="hide"</TMPL_IF>>
+            <td class="name"><a href="./?id=<TMPL_VAR ID>"><TMPL_VAR NAME></a>
+            <td class="author"><TMPL_VAR AUTHOR>
+            <td class="taxa"><TMPL_VAR TAXA>
+            <td class="level"><TMPL_VAR LV>
+            <td class="system"><TMPL_VAR SYSTEM>
+            <td class="tags"><TMPL_VAR TAGS></td>
+            <td class="date"><div><TMPL_VAR DATE></div>
+          </TMPL_LOOP>
+        </table>
+        </TMPL_IF>
+        <TMPL_VAR PAGER>
+        <TMPL_IF MORE><p class="more"><a href="./?<TMPL_VAR QUERYBASE><TMPL_VAR qLinks>">>>MORE</a></p></TMPL_IF>
+      </section>
+      </TMPL_LOOP>
+      
+      <TMPL_IF simpleIndex><section class="list">
+        <ul class="grouplist">
+          <TMPL_LOOP SystemGroups><li><a href="./?type=m&system=<TMPL_VAR NAME>"><TMPL_VAR NAME></a></TMPL_LOOP>
+        </ul>
+      </section></TMPL_IF>
+    </article>
+    <div id="page-top-button"><a href="#"></a></div>

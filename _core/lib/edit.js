@@ -28,8 +28,23 @@ let saving = 0;
 function formSubmit() {
   if(saving){ return; }
   if(!formCheck()){ return false; }
+
+  if(typeof imageType !== "undefined" && imageType === 'character'){
+    saveCurrentImageLayout();
+  }
+
   const formData = new FormData(form);
-  const action = form.getAttribute("action");
+  for(const [imageNo, compressedImageFile] of Object.entries(compressedImageFiles)){
+    const suffix = imageNo == '1' ? '' : imageNo;
+    formData.set(`imageFile${suffix}`, compressedImageFile, compressedImageFile.name);
+  }
+
+  for (const key of formData.keys()) {
+    if(/\[\]$/.test(key)){
+      formData.set(key.replace(/\[\]$/,''), formData.getAll(key));
+      formData.delete(key);
+    }
+  }
   if(base64Mode){
     for(let item of formData){
       if(item[0] === 'mode'){ continue; }
@@ -47,13 +62,21 @@ function formSubmit() {
   saving = 1;
   const sendCount = formChangeCount;
   formChangeCount = 0;
+  const action = form.getAttribute("action");
   fetch(action, options)
-    .then(response => {
-      if(response.status === 200) {
-        return response.json()
-      }
-      throw Error(response.statusText);
-    })
+  .then(async response => {
+    let data;
+    try {
+      data = await response.json();
+    }
+    catch(e){
+      throw Error(response.statusText || '通信エラー');
+    }
+    if(!response.ok){
+      throw Error(data.message || response.statusText);
+    }
+    return data;
+  })
     .then(data => {
       if(data.result === 'make'){
         localStorage.removeItem('formData-'+sheetType); //中途バックアップ削除
@@ -62,7 +85,45 @@ function formSubmit() {
       else if(data.result === 'ok'){
         saveInfo('saved');
         console.log(data.message);
-        form.protectOld.value = form.protect.value; 
+        const protectType = form.protect.value;
+        form.protectOld.value = protectType;
+        if(document.getElementById('edit-protect')){
+          if(protectType === 'password'){
+            form.pass.type = 'hidden';
+          }
+          else {
+            form.pass.type = 'password';
+            form.pass.value = '';
+          }
+        }
+        if(typeof imageType !== "undefined" && imageType === 'character'){
+          const newImageData = data?.data?.newImageData || {};
+          Object.keys(newImageData).forEach(imageNo => {
+            const suffix = imageSuffix(imageNo);
+            form[`imageFile${suffix}`].value = '';
+            delete compressedImageFiles[imageNo];
+            form[`imageDelete${suffix}`].checked = false;
+            if(newImageData[imageNo].ext === ''){
+              if(imageURLs[imageNo]){
+                URL.revokeObjectURL(imageURLs[imageNo]);
+                imageURLs[imageNo] = '';
+                form[`image${suffix}`].value = '';
+                form[`imageUpdate${suffix}`].value = '';
+              }
+              document.querySelector(`#image-select-buttons img[data-num="${imageNo}"]`).src = emptyImageURL;
+              if(imageNo == editingImageNo){
+                document.getElementById('image').style.backgroundImage = '';
+                document.querySelectorAll('.image-custom-view').forEach((obj) => {
+                  obj.style.backgroundImage = '';
+                });
+              }
+            }
+            else if(newImageData[imageNo].ext){
+              form[`image${suffix}`].value = newImageData[imageNo].ext;
+              form[`imageUpdate${suffix}`].value = newImageData[imageNo].update;
+            }
+          });
+        }
       }
       else{
         throw Error(data.result === 'error' ? data.message : "保存できませんでした。");
@@ -80,7 +141,14 @@ function formCheck(){
     form.characterName.focus();
     return false;
   }
-  if(form.protect.value === 'password' && form.pass.value === ''){
+  if(!formPasswordCheck()){
+    return false;
+  }
+  
+  return true;
+}
+function formPasswordCheck(){
+  if(form.protect.value === 'password' && form.pass.type !== 'hidden' && form.pass.value === ''){
     alert('パスワードが入力されていません。');
     form.pass.focus();
     return false;
@@ -129,10 +197,10 @@ function backupFormInputs() {
   delete obj._token;
   delete obj.id;
   delete obj.pass;
-  delete obj.image;
-  delete obj.imageFile;
-  delete obj.imageCompressed;
-  delete obj.imageCompressedType;
+  delete obj.mainImage;
+  for(const key of Object.keys(obj)){
+    if(/^imageFile\d*$/.test(key) || /^image(?:Update)?\d*$/.test(key)){ delete obj[key]; }
+  }
   const formDataJSON = JSON.stringify(obj);
   localStorage.setItem('formData-'+sheetType, formDataJSON);
   console.log('backupFormInputs(): formData-'+sheetType)
@@ -178,17 +246,80 @@ window.addEventListener('load', () => {
 });
 
 // 名前 ----------------------------------------
-function setName(id){
-  id = id ? id : 'characterName';
-  let name = vCheck(id+'Ruby') ? `<ruby>${form[id].value}<rp>(</rp><rt>${vCheck(id+'Ruby')}</rt><rp>)</rp></ruby>` : ruby(form[id].value);
-  let aka = (form.aka && form.aka.value) ? '<span class="aka">“'+(vCheck('akaRuby') ? `<ruby>${form.aka.value}<rp>(</rp><rt>${vCheck('akaRuby')}</rt><rp>)</rp></ruby>` : `${ruby(form.aka.value)}`)+'”</span>' : '';
-  document.querySelector('#header-menu > h2 > span').innerHTML = (aka + name) || '(名称未入力)';
+function setName(){
+  const main = document.getElementById('main-name')?.name;
+  const sub = document.getElementById('sub-name')?.name;
 
+  console.log(`setName():`, main, sub);
+  
+  let output = '';
+  if(vCheck('aka')){ output += '<span class="aka">“'+(setRuby('aka'))+'”</span>' }
+  if(vCheck(main)){ output += setRuby(main);}
+  if(vCheck(sub)){ output += output ? `<small>（${setRuby(sub)}）</small>` : setRuby(sub);}
+  output ||= '（名称未入力）';
+
+  document.querySelector('#header-menu > h2 > span').innerHTML = output;
+  document.querySelectorAll('.color-sample .name').forEach(div => {
+    div.innerHTML = output;
+  })
+
+  function setRuby(name) {
+    if(vCheck(name+'Ruby')){ return `<ruby>${form[name].value}<rp>(</rp><rt>${form[name+'Ruby'].value}</rt><rp>)</rp></ruby>` }
+    else { return ruby(form[name].value) }
+  }
   function vCheck(id){
     if(form[id]){ return form[id].value; }
     else { return '' }
   }
 }
+const fontWeight = {};
+function setFonts(){
+  console.log(`setFonts()`);
+  fontList.forEach(data => {
+    fontWeight[data[0]] = data[1];
+    setGoogleFont(data[0], "フォント");
+  });
+}
+function changeNameFont(){
+  if(!form.nameFont){ return; }
+  console.log(`changeNameFont()`);
+  const fontName = form.nameFont.value;
+  const h2 = document.querySelector('h2');
+  const targets = [...document.querySelectorAll('.color-sample .name')];
+
+  if(fontName){
+    setGoogleFont(fontName, h2.innerText);
+    targets.forEach(target => {
+      target.style.fontFamily = `"${fontName}"`
+      target.style.fontWeight = fontWeight[fontName] || 'bold';
+    });
+  }
+  else {
+    targets.forEach(target => {
+      target.style.fontFamily = null;
+      target.style.fontWeight = null;
+    });
+  }
+}
+async function setGoogleFont(fontName, charaName){
+  let urlFamilyName = fontName.replace(/ /g, "+");
+  if(Number(fontWeight[fontName])){ urlFamilyName += `:wght@${fontWeight[fontName]}` }
+  const googleApiUrl = `https://fonts.googleapis.com/css2?family=${urlFamilyName}&text=${encodeURIComponent(charaName)}`;
+
+  const response = await fetch(googleApiUrl);
+  if (response.ok) {
+    const cssFontFace = await response.text();
+    const matchUrls = cssFontFace.match(/url\(.+?\)/g);
+    if (!matchUrls) throw new Error("フォントが見つかりませんでした");
+    
+    for (const url of matchUrls) {
+      const font = new FontFace(fontName, url);
+      await font.load();
+      document.fonts.add(font);
+    }
+  }
+}
+
 // ルビ置換 ----------------------------------------
 function ruby(text){
   return text.replace(/[|｜](.+?)《(.+?)》/g, "<ruby>$1<rp>(</rp><rt>$2</rt><rp>)</rp></ruby>");
@@ -197,8 +328,7 @@ function ruby(text){
 // 最新のデータを取得 ----------------------------------------
 let newestData = {};
 async function getNewestData(){
-  const queries = new URLSearchParams(window.location.search);
-  const id = queries.get('id');
+  const id = form.id.value;
   
   const action = form.getAttribute("action")
   const options = {
@@ -243,8 +373,9 @@ function setChatPalette(){
   formData.set("mode", "palette");
   formData.set("editingMode", "1");
   formData.delete("password");
-  formData.delete("imageFile");
-  formData.delete("imageCompressed");
+  for(const key of Array.from(formData.keys())){
+    if(/^imageFile\d*$/.test(key)){ formData.delete(key); }
+  }
   formData.delete("unitStatusNum");
   formData.delete("unitStatusNotOutput");
   const action = form.getAttribute("action")
@@ -291,6 +422,7 @@ function setDefaultStatus(statusArray){
     tbody.innerHTML = '';
     for(let item of statusArray){
       for (const key in item) {
+        if(key === 'メモ'){ continue }
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>
@@ -321,37 +453,66 @@ if (document.getElementById('unit-status-optional')) {
 }
 
 // 画像配置 ----------------------------------------
+let imgURL = '';
+let imageURLs = typeof savedImageURLs === 'object' ? savedImageURLs : {};
+window.addEventListener('load', function(e) {
+  if(typeof imageType !== 'undefined'){
+    if(imageType === 'character'){
+      setImagePosition();
+      checkMainImage(form.mainImage.value);
+    }
+    else {
+      imgURL = `./?id=${form.id.value}&mode=image&imageNo=1&cache=${form.imageUpdate.value}`;
+      document.getElementById('image').style.backgroundImage = `url(${imgURL})`;
+    }
+  }
+});
+
 // ビューを開く
 function imagePositionView(){
   document.getElementById('image-custom').style.display = 'grid';
   imageDragPointSet();
 }
 function imagePositionClose(){
+  saveCurrentImageLayout();
   document.getElementById('image-custom').style.display = 'none';
 }
 // プレビュー
-function imagePreView(file, imageMaxSize){
+function imagePreView(file, imageMaxSize, imageNo = 1){
+  if(!file){ return; }
+
+  if(imageType === 'character'){ switchImageLayoutConfig(imageNo); }
+
+  delete compressedImageFiles[imageNo];
+
   if(file.size > imageMaxSize){
     alert(`ファイルサイズが${ (imageMaxSize >= 1048576) ? (imageMaxSize / 1048576)+'MB' : (imageMaxSize / 1024)+'KB' }を超えているため、自動的に画像形式を変換・縮小されます。元画像が大きいと、変換・縮小処理に時間がかかることがあります。`);
-    form.imageFile.value = '';
-    imageCompressor(file, imageMaxSize);
+    const suffix = imageNo == 1 ? '' : imageNo;
+    form[`imageFile${suffix}`].value = '';
+    imageCompressor(file, imageMaxSize, imageNo);
   }
   else {
-    imageBlobPreview(file)
+    delete compressedImageFiles[imageNo];
+    imageBlobPreview(file, imageNo)
   }
 }
-function imageBlobPreview(blob){
+function imageBlobPreview(blob, imageNo = 1){
   const blobURL = window.URL.createObjectURL(blob);
-  document.getElementById('image').style.backgroundImage = 'url("'+blobURL+'")';
-  document.querySelectorAll(".image-custom-view").forEach((el) => {
-    el.style.backgroundImage = 'url("'+blobURL+'")';
-  });
-  imgURL = blobURL;
-  if(imageType == 'character'){ imageDragPointSet(); }
+
+  // 古いBlob URLがある場合は破棄
+  if(imageURLs[imageNo]){
+    URL.revokeObjectURL(imageURLs[imageNo]);
+  }
+
+  imageURLs[imageNo] = blobURL;
+  if(document.querySelector(`#image-select-buttons img[data-num="${imageNo}"]`)) {
+    document.querySelector(`#image-select-buttons img[data-num="${imageNo}"]`).src = blobURL;
+  }
+  setPreviewImage(imageNo);
 }
 // 圧縮
-let compressScale = 1;
-function imageCompressor(data, imageMaxSize){
+const compressedImageFiles = {};
+function imageCompressor(data, imageMaxSize, imageNo = 1, compressScale = 1){
   let image = new Image();
   let blobURL = URL.createObjectURL(data);
   image.src = blobURL;
@@ -360,21 +521,19 @@ function imageCompressor(data, imageMaxSize){
       quality: 0.9,
       success(result) {
         if(result.size > imageMaxSize){
-          compressScale -= 0.1;
-          if(compressScale > 0){
-            console.log(`画像縮小: ${ compressScale * 100 } %`);
-            imageCompressor(result, imageMaxSize);
+          const nextCompressScale = compressScale - 0.1;
+          if(nextCompressScale > 0){
+            console.log(`画像縮小: ${ nextCompressScale * 100 } %`);
+            imageCompressor(result, imageMaxSize, imageNo, nextCompressScale);
           }
           else { alert('画像サイズを既定まで下げることができませんでした。'); }
         }
         else {
-          imageBlobPreview(result);
-          let reader = new FileReader();
-          reader.readAsDataURL(result);
-          reader.onload = function() {
-            form.imageCompressed.value = reader.result;
-            form.imageCompressedType.value = result.type;
-          }
+          imageBlobPreview(result, imageNo);
+          compressedImageFiles[imageNo] = new File([result], 'image.webp', {
+            type: result.type || 'image/webp',
+            lastModified: Date.now(),
+          });
         }
       },
       maxWidth : image.width * compressScale,
@@ -385,43 +544,49 @@ function imageCompressor(data, imageMaxSize){
 }
 // パーセンテージゲージ変更
 function imagePercentBarChange(per){
-  form.imagePercent.value = per;
+  form.editingImagePercent.value = per;
   imagePosition();
 }
 // ポジション反映
 function imagePosition(){
-  const bgSize = form.imageFit.options[form.imageFit.selectedIndex].value;
+  const bgSize = form.editingImageFit.value;
+  let configVisiblity = 'hidden';
+  let backgroundSize = '100%';
+  let ogpSize = '100%';
   if(bgSize === 'percentX'){
-    document.getElementById("image-percent-config").style.visibility = 'visible';
-    document.getElementById("image").style.backgroundSize = form.imagePercent.value + '%';
-    document.querySelectorAll(".image-custom-view").forEach((el) => {
-      el.style.backgroundSize = form.imagePercent.value + '%';
-    });
+    configVisiblity = 'visible';
+    backgroundSize = form.editingImagePercent.value + '%';
+    ogpSize = form.editingImagePercent.value + '%';
   }
   else if(bgSize === 'percentY'){
-    document.getElementById("image-percent-config").style.visibility = 'visible';
-    document.getElementById("image").style.backgroundSize = 'auto ' + form.imagePercent.value + '%';
-    document.querySelectorAll(".image-custom-view").forEach((el) => {
-      el.style.backgroundSize = 'auto ' + form.imagePercent.value + '%';
-    });
+    configVisiblity = 'visible';
+    backgroundSize = 'auto ' + form.editingImagePercent.value + '%';
+    ogpSize = 'auto ' + (Number(form.editingImagePercent.value) * 1.2) + '%';
   }
   else {
-    document.getElementById("image-percent-config").style.visibility = 'hidden';
-    document.getElementById("image").style.backgroundSize = bgSize;
-    document.querySelectorAll(".image-custom-view").forEach((el) => {
-      el.style.backgroundSize = bgSize;
-    });
+    configVisiblity = 'hidden';
+    backgroundSize = bgSize;
+    ogpSize = bgSize;
   }
-  document.getElementById("image-positionX-view").textContent = form.imagePositionX.value + '%';
-  document.getElementById("image-positionY-view").textContent = form.imagePositionY.value + '%';
-  document.getElementById("image").style.backgroundPositionX = form.imagePositionX.value + '%';
-  document.getElementById("image").style.backgroundPositionY = form.imagePositionY.value + '%';
-  document.querySelectorAll(".image-custom-view").forEach((el) => {
-    el.style.backgroundPositionX = form.imagePositionX.value + '%';
-    el.style.backgroundPositionY = form.imagePositionY.value + '%';
+  document.getElementById("image-percent-config").style.visibility = configVisiblity;
+  document.querySelectorAll("#image, :is(#image-custom-frame-M,#image-custom-frame-S) > .image-custom-view").forEach((el) => {
+    el.style.backgroundSize = backgroundSize;
+    el.style.backgroundPositionX = form.editingImagePositionX.value + '%';
+    el.style.backgroundPositionY = form.editingImagePositionY.value + '%';
   });
+  document.querySelector("#image-custom-frame-O > .image-custom-view").style.backgroundSize = ogpSize;
+  document.querySelector("#image-custom-frame-O > .image-custom-view").style.backgroundPositionX = form.editingImagePositionX.value + '%';
+  document.querySelector("#image-custom-frame-O > .image-custom-view").style.backgroundPositionY = (Number(form.editingImagePositionY.value) * 0.9) + '%';
+
+  document.getElementById("image-positionX").value = form.editingImagePositionX.value;
+  document.getElementById("image-positionY").value = form.editingImagePositionY.value;
   
-  document.getElementById("image-percent-bar").value = form.imagePercent.value;
+  document.getElementById("image-percent-bar").value = form.editingImagePercent.value;
+}
+function imagePositionNumberToRange(){
+  form.editingImagePositionX.value = document.getElementById("image-positionX").value;
+  form.editingImagePositionY.value = document.getElementById("image-positionY").value;
+  imagePosition();
 }
 // ドラッグ処理
 let dragFlag = 0;
@@ -443,7 +608,7 @@ function imageDragMove(e){
     const x2 = touches[1].pageX;
     const y2 = touches[1].pageY;
     const distance = Math.sqrt( Math.pow( x2-x1, 2 ) + Math.pow( y2-y1, 2 ) );
-    const obj = form.imagePercent;
+    const obj = form.editingImagePercent;
     if(baseDistance){
       const gap = (distance - baseDistance);
       if     (gap > 0){ obj.value = Number(obj.value)+5; }
@@ -457,9 +622,9 @@ function imageDragMove(e){
   // ドラッグ移動
   else {
     if(dragFlag){
-      const objX = form.imagePositionX;
-      const objY = form.imagePositionY;
-      const objP = form.imagePercent;
+      const objX = form.editingImagePositionX;
+      const objY = form.editingImagePositionY;
+      const objP = form.editingImagePercent;
       const x = e.x || e.changedTouches[0].pageX;
       const y = e.y || e.changedTouches[0].pageY;
       objX.value = Number(objX.value) + (dragPoint.x - x) * pointWidth;
@@ -478,8 +643,8 @@ function imageDragPointSet(){
   let img = new Image();
   img.src = imgURL;
   img.onload = function() {
-    const type = form.imageFit.value;
-    const ratio = Number(form.imagePercent.value) / 100;
+    const type = form.editingImageFit.value;
+    const ratio = Number(form.editingImagePercent.value) / 100;
     const imgWidth  = img.width;
     const imgHeight = img.height;
     const boxWidth  = document.getElementById('image-custom-frame-M').offsetWidth  || 350;
@@ -524,7 +689,7 @@ function imageDragPointSet(){
 }
 // セリフプレビュー
 function wordsPreView(){
-  let words = form.words.value;
+  let words = form.editingWords.value;
   words = words.replace(/[|｜](.+?)《(.+?)》/g, '<ruby><rp>｜</rp>$1<rp>《</rp><rt>$2</rt><rp>》</rp></ruby>')
                .replace(/《《(.+?)》》/g, '<span class="text-em">$1</span>')
                .replace(/“/g, '〝')
@@ -537,14 +702,106 @@ function wordsPreView(){
   const wObj = document.getElementById('words-preview');
   wObj.innerHTML = words;
   
-  wObj.style.left   = form.wordsX.value === '左' ? '0' : '';
-  wObj.style.right  = form.wordsX.value === '右' || !form.wordsX.value ? '0' : '';
-  wObj.style.top    = form.wordsY.value === '上' || !form.wordsY.value ? '0' : '';
-  wObj.style.bottom = form.wordsY.value === '下' ? '0' : '';
+  wObj.style.left   = form.editingWordsX.value === '左' ? '0' : '';
+  wObj.style.right  = form.editingWordsX.value === '右' || !form.editingWordsX.value ? '0' : '';
+  wObj.style.top    = form.editingWordsY.value === '上' || !form.editingWordsY.value ? '0' : '';
+  wObj.style.bottom = form.editingWordsY.value === '下' ? '0' : '';
   
-  document.getElementById('image-copyright-preview').textContent = form.imageCopyright.value;
+  document.getElementById('image-copyright-preview').textContent = form.editingImageCopyright.value;
 }
 
+// 画像プレビュー切替
+let editingImageNo = Number(form.mainImage?.value || 1);
+
+function setImagePosition() {
+  editingImageNo = Number(form.mainImage?.value || 1);
+  loadImageLayout(editingImageNo);
+  setPreviewImage(editingImageNo);
+  imagePosition();
+  document.querySelectorAll("#image-select-buttons img").forEach(obj => {
+    obj.classList.toggle('selected', obj.dataset.num == editingImageNo);
+  });
+}
+function imageSuffix(imageNo){
+  return imageNo == 1 ? '' : imageNo;
+}
+function getSavedImageURL(imageNo) {
+  if(typeof imageURLs === 'undefined'){ return ''; }
+  return imageURLs[imageNo] || '';
+}
+function setPreviewImage(imageNo) {
+  imageNo = Number(imageNo || 1);
+
+  const url = imageURLs[imageNo] || '';
+
+  const backgroundImage = url ? `url("${url}")` : '';
+
+  const imageBox = document.getElementById('image');
+  if(imageBox){
+    imageBox.style.backgroundImage = backgroundImage;
+  }
+
+  document.querySelectorAll('.image-custom-view').forEach((obj) => {
+    obj.style.backgroundImage = backgroundImage;
+  });
+
+  // imageDragPointSet() が参照する現在画像URL
+  imgURL = url || '';
+
+  if(imageType === 'character'){
+    if(imgURL){
+      // 画像がある場合のみ、ドラッグ基準点を再計算
+      imageDragPointSet();
+    }
+    // 現在フォームに入っているレイアウト設定をプレビューへ反映
+    imagePosition();
+
+    // 著作権表示・セリフ表示も更新
+    wordsPreView();
+  }
+
+}
+function saveCurrentImageLayout(){
+  const suffix = imageSuffix(editingImageNo);
+  form[`imageFit${suffix}`].value          = form.editingImageFit.value;
+  form[`imagePercent${suffix}`].value      = form.editingImagePercent.value;
+  form[`imagePositionX${suffix}`].value    = form.editingImagePositionX.value;
+  form[`imagePositionY${suffix}`].value    = form.editingImagePositionY.value;
+  form[`imageCopyright${suffix}`].value    = form.editingImageCopyright.value;
+  form[`imageCopyrightURL${suffix}`].value = form.editingImageCopyrightURL.value;
+  form[`words${suffix}`].value  = form.editingWords.value;
+  form[`wordsX${suffix}`].value = form.editingWordsX.value;
+  form[`wordsY${suffix}`].value = form.editingWordsY.value;
+}
+function loadImageLayout(imageNo){
+  const suffix = imageSuffix(imageNo);
+  form.editingImageFit.value          = form[`imageFit${suffix}`].value || 'cover';
+  form.editingImagePercent.value      = form[`imagePercent${suffix}`].value || 200;
+  form.editingImagePositionX.value    = form[`imagePositionX${suffix}`].value || 50;
+  form.editingImagePositionY.value    = form[`imagePositionY${suffix}`].value || 50;
+  form.editingImageCopyright.value    = form[`imageCopyright${suffix}`].value || '';
+  form.editingImageCopyrightURL.value = form[`imageCopyrightURL${suffix}`].value || '';
+  form.editingWords.value  = form[`words${suffix}`].value || '';
+  form.editingWordsX.value = form[`wordsX${suffix}`].value || '';
+  form.editingWordsY.value = form[`wordsY${suffix}`].value || '';
+}
+function switchImageLayoutConfig(imageNo){
+  saveCurrentImageLayout();
+
+  editingImageNo = Number(imageNo);
+  loadImageLayout(editingImageNo);
+  setPreviewImage(editingImageNo);  
+  document.querySelectorAll("#image-select-buttons img").forEach(obj => {
+    obj.classList.toggle('selected', obj.dataset.num == imageNo);
+  });
+}
+// メイン画像変更
+function checkMainImage(imageNo){
+  document.querySelectorAll(`#image-select-buttons input[name^="imageHide"]`).forEach(obj => {
+    obj.disabled = false;
+  });
+  form["imageHide"+imageSuffix(imageNo)].disabled = true;
+}
 // カラーカスタム ----------------------------------------
 function changeColor(){
   let hH = Number(form.colorHeadBgH.value);
@@ -592,10 +849,10 @@ function exportAsJson() {
   delete o._token;
   delete o.id;
   delete o.pass;
-  delete o.image;
-  delete o.imageFile;
-  delete o.imageCompressed;
-  delete o.imageCompressedType;
+  delete o.mainImage;
+  for(const key of Object.keys(o)){
+    if(/^imageFile\d*$/.test(key) || /^image(?:Update)?\d*$/.test(key)){ delete o[key]; }
+  }
   const json = JSON.stringify(o);
 
   const jsonUrl = window.URL.createObjectURL(new Blob([json], {type: 'text/json;charset=utf-8;'}));
@@ -614,6 +871,7 @@ function exportAsJson() {
 }
 
 // セクション選択 ----------------------------------------
+let opendSection = {};
 function sectionSelect(id){
   document.querySelectorAll('article > form > section[id^="section"]').forEach( obj => {
     obj.style.display = 'none';
@@ -621,6 +879,11 @@ function sectionSelect(id){
   document.getElementById('section-'+id).style.display = 'block';
   window.scrollTo({ top:0 });
   if(id === 'palette'){ changeNamePlate(); setChatPalette() }
+  if(id === 'color'){
+    if(!opendSection.color){ setFonts(); }
+    changeNameFont();
+  }
+  opendSection[id] = true;
 }
 
 // 目次 ----------------------------------------
@@ -839,6 +1102,10 @@ function delRowNode(targetSelector, initialText){
 // 行ソート ----------------------------------------
 function setSortable(namePrefix, targetSelector, rowElement = '', addReplace, nextFunction){
   console.log(`setSortable('${namePrefix}','${targetSelector}','${rowElement}')`)
+  if(!document.querySelector(targetSelector)){
+    console.error(`'${targetSelector}'がありません。`);
+    return;
+  }
   const regExp = new RegExp(`^(${namePrefix})[0-9]+(.*)$`);
   let sortable = Sortable.create(document.querySelector(targetSelector), {
     dataIdAttr: 'id',
@@ -901,13 +1168,18 @@ function formatNumber(num){
 function ucfirst(str){
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-
+// ケース変換 ----------------------------------------
+function camelToKebab(str) {
+  return str
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase();
+}
 // 安全なeval ----------------------------------------
 function safeEval(text){
   if     (text === '') { return 0; }
   else if(text.match(/[^0-9,\+\-\*\/\(\) ]/)){ return NaN; }
   
-  text = text.replace(/,([0-9]{3}(?![0-9]))/g, "$1");
+  text = text.replace(/(^,|,$)/g,"").replace(/,([0-9]{3}(?![0-9]))/g, "$1");
 
   try { return Number( Function('"use strict";return (' + text + ')')() ); } 
   catch (e) { return NaN; }
@@ -940,3 +1212,94 @@ function getYtsheetJSON(url){
     });
   });
 }
+
+// 読込完了 ----------------------------------------
+function deleteLoadingArea() {
+  const loadingArea = document.getElementById('loading');
+  if (loadingArea) {
+    loadingArea.remove();
+  }
+}
+
+// インポート ----------------------------------------
+window.addEventListener('load', () => {
+  const button = document.getElementById('button-to-import-from-clipboard');
+
+  if (button != null) {
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+
+      let errorMessage;
+
+      try {
+        const text = await navigator.clipboard.readText();
+
+        if (URL.canParse(text)) {
+          const url = new URL(text);
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            /** @var {HTMLFormElement} */
+            const formObj = document.getElementById('form-to-import-from-url');
+
+            formObj.querySelector('[name=url]').value = url.toString();
+            formObj.submit();
+          } else {
+            errorMessage = "無効な形式のURLです。";
+          }
+        } else {
+          let json;
+
+          try {
+            const data = JSON.parse(text);
+            json = JSON.stringify(data);
+          } catch {
+            errorMessage = "クリップボードの内容がURLでもJSONでもありません。";
+          }
+
+          if (errorMessage == null) {
+            /**
+             * @param {string} name
+             * @param {string} value
+             * @return {HTMLInputElement}
+             */
+            function createParameter(name, value) {
+              const input = document.createElement('input');
+              input.setAttribute('name', name);
+              input.setAttribute('value', value);
+              input.setAttribute('type', 'hidden');
+              return input;
+            }
+
+            const formObj = document.createElement('form');
+            formObj.setAttribute('method', 'post');
+            formObj.setAttribute('action', './');
+            formObj.appendChild(createParameter('mode', 'edit'));
+            formObj.appendChild(createParameter('overwrite', '1'));
+            formObj.appendChild(createParameter('id', form.id.value));
+            if (form.pass != null) {
+              formObj.appendChild(createParameter('pass', form.pass.value));
+            }
+            formObj.appendChild(createParameter('json', json));
+            formObj.style.display = 'none';
+
+            document.querySelector('body').appendChild(formObj);
+            formObj.submit();
+          }
+        }
+      } catch (error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "Read permission denied.";
+        } else {
+          throw error;
+        }
+      } finally {
+        if (errorMessage != null) {
+          alert(errorMessage);
+        }
+
+        button.disabled = false;
+      }
+    });
+
+    button.disabled = false;
+  }
+});

@@ -3,17 +3,7 @@
 @layer system {
 /* // Body
 ---------------------------------------------------------------------------------------------------- */
-body {
-  background-image: url(../../_common/img/back-pattern.png), url(../img/back-wheel.png);
-  background-blend-mode: normal, normal;
-  .night & {
-    background-blend-mode: hard-light, hard-light;
-  }
-  @media screen and (width <= 735px){
-    background-size: auto, 100%;
-    background-position-x: 0, 15vw;
-  }
-}
+
 /* // List
 ---------------------------------------------------------------------------------------------------- */
 .list table tr {
@@ -191,5 +181,39 @@ body {
   }
   .list table td.date div {
     line-height: 1.1 !important; 
+  }
+}
+
+
+/* ==========================================
+   MGR用 エネミー一覧テーブルレイアウト
+========================================== */
+.list.monster table tr {
+  /* 各列の幅割り当て（名称｜制作者｜分類｜レベル｜システム｜更新日） */
+  grid-template-columns: 20rem 1fr 14em 4.5em 14em 0.8fr !important;
+  grid-template-areas:
+    "NAME PL TAXA LVL SYS DATE"
+    "NAME TAGS TAGS TAGS TAGS DATE" !important;
+}
+
+.list.monster table tr .name   { grid-area: NAME; }
+.list.monster table tr .author { grid-area: PL; }
+.list.monster table tr .taxa   { grid-area: TAXA; }
+.list.monster table tr .level  { grid-area: LVL; }
+.list.monster table tr .system { grid-area: SYS; }
+.list.monster table tr .date   { grid-area: DATE; }
+
+.list.monster table td.level {
+  font-size: 1.15em;
+  font-weight: bold;
+  text-align: center;
+}
+
+@media screen and (max-width: 735px) {
+  .list.monster table tr {
+    display: grid !important;
+    grid-template-columns: 25% 15% 15% 10% 20% 15% !important;
+    grid-template-areas: "NAME PL TAXA LVL SYS DATE" !important;
+    width: 100% !important;
   }
 }

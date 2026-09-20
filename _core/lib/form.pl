@@ -9,11 +9,10 @@ my $mode = $::in{mode};
 my $LOGIN_ID = check;
 if($LOGIN_ID && $mode =~ /register|login/){ print "Location: ./\n\n"; }
 
-my $token = random_id(12);
+my $token = randomId(12);
 
-my $mask = umask 0;
 if($mode eq 'register'){
-  sysopen (my $FH, $set::tokenfile, O_WRONLY | O_APPEND | O_CREAT, 0666);
+  sysopen (my $FH, $set::tokenfile, O_WRONLY | O_APPEND | O_CREAT);
   print $FH $token."<>".(time + 60*60*24)."<>\n";
   close($FH);
 }
@@ -36,15 +35,19 @@ $INDEX->param(modeConvert  => 1) if $mode eq 'convertform';
 
 if($mode eq 'option' || $mode eq 'passchange'){
   $INDEX->param(setMessage => $main::set_message);
-  $INDEX->param(userName => (getplayername($LOGIN_ID))[0]);
-  $INDEX->param(userMail => (getplayername($LOGIN_ID))[1]);
+  $INDEX->param(userName => (getPlayerName($LOGIN_ID))[0]);
+  $INDEX->param(userMail => (getPlayerName($LOGIN_ID))[1]);
 }
-if($mode eq 'convertform'){
+elsif($mode eq 'convertform'){
   my @urls;
   foreach (keys %set::convert_url){
     push(@urls, { URL => $_ });
   }
   $INDEX->param(ConvertURLs => \@urls);
+}
+elsif($mode eq 'edit-help'){
+  $INDEX->param(pageTitle => 'テキスト装飾・整形ルール - ');
+  $INDEX->param(textRule => renderTextRule());
 }
 
 $INDEX->param(LOGIN_ID => $LOGIN_ID);
@@ -57,9 +60,11 @@ $INDEX->param(registerkey => 1) if $set::registerkey;
 $INDEX->param(title => $set::title);
 $INDEX->param(ver => $main::ver);
 $INDEX->param(coreDir => $::core_dir);
+$INDEX->param(gameDir => $set::game);
+$INDEX->param(systemId => $set::system_id || $set::game);
 
 ### 出力 #############################################################################################
 print "Content-Type: text/html\n\n";
-print $INDEX->output;
+print outputTemplate($INDEX);
 
 1;

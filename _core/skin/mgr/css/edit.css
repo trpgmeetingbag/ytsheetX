@@ -106,10 +106,13 @@ dd.area-tags {
 #connections-table {
   table-layout: fixed;
 }
+#connections-table .col-handle { width: 1.5em; } /* 常備化 */
 #connections-table .col-joubi { width: 2.5em; } /* 常備化 */
 #connections-table .col-rel   { width: 8em; }   /* 関係 */
 #connections-table .col-name  { width: 8em; }  /* 名前 */
 #connections-table .col-note  { width: auto; }  /* 備考（残りを全割り当て） */
+
+
 
 /* 入力欄をセルいっぱいに広げる */
 #lp-m-c-union table input {
@@ -529,6 +532,7 @@ dd.area-tags {
   grid-template-areas:
     "PER  IMG"
     "LMC  IMG"
+    "CON  IMG"
     "CLS  IMG"
     "STT  STT"
   !important;
@@ -539,6 +543,7 @@ dd.area-tags {
 /* 各エリアの割り当て */
 #personal      { grid-area: PER !important; }
 #lp-m-c-union  { grid-area: LMC !important; }
+#connections   { grid-area: CON !important; }
 #classes       { grid-area: CLS !important; }
 #status        { 
   grid-area: STT !important;
@@ -660,8 +665,11 @@ dd.area-tags {
 #classes-table {
   width: 100%;
 }
+#classes-table td:nth-child(1) {
+  width: 1.5em !important;
+}
 #classes-table td:nth-child(2) {
-  width: 100%; /* クラス名のセルを最大限広げる */
+  width: auto; /* クラス名のセルを最大限広げる */
 }
 #classes-table input[list="list-classes"] {
   width: 100%;
@@ -1221,4 +1229,10 @@ dd.area-tags {
     box-sizing: border-box !important;
     min-width: 0 !important; /* フレックスやグリッド内での無限膨張を防ぐ */
   }
+
+
+
+
 }
+
+

@@ -114,20 +114,37 @@
     </aside>
     </TMPL_IF>
     <article>
+      <TMPL_IF LOGIN_ID><aside id="login-state">
+        <ul>
+          <li><b><TMPL_VAR LOGIN_ID></b> でログイン中です
+          <li class="logout-button"><a href="./?mode=logout"><span class="material-symbols-outlined" aria-hidden="true">logout</span>ログアウト</a>
+        </ul>
+      </aside></TMPL_IF>
       <section class="form">
-        <h2>ユーザー設定</h2>
+        <h2>閲覧設定 <small>ブラウザ毎に保存されます</small></h2>
         <dl>
-          <dt><label class="toggle-button"><input type="checkbox" onchange="changeColorlessMode()"></label> カラーカスタムを無効にする
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleColorlessMode()"></label> カラーカスタムを無効にする
           <dd>ONにすると、各キャラクターシートのカラーカスタムが（名前欄を除き）無効化されます。
         </dl>
         <dl>
-          <dt><label class="toggle-button"><input type="checkbox" onchange="changeRubyCopyMode()"></label> ルビをコピーした時、ルビ記法でコピーする
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleRubyCopyMode()"></label> ルビをコピーした時、ルビ記法でコピーする
           <dd>キャラクターシートの閲覧画面で、ルビを含む文字列をコピーした際、ルビ記法ごとコピーします。<br>
             たとえば「<ruby>漢字<rt>かんじ</ruby>」という文字列の場合、コピーされる文字列が以下のようになります。<br>
             ON:「｜漢字《かんじ》」／OFF:「漢字(かんじ)」
         </dl>
+        <dl>
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleSingleColumnMode()"></label> 常に１カラムで表示する
+          <dd>ONにすると、キャラクターシート表示時、ウインドウサイズに関わらず、常に１カラムレイアウトにします。（ウインドウサイズが広いときに、２カラムレイアウトにするのを無効化します）
+        </dl>
+        <p id="confirm-adult-age">あなたは18歳以上ですか？ <label class="toggle-button yes-no"><input type="checkbox" onchange="declareAdultAge()"></label></p>
+        <dl>
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleSpoilerDisplayMode('R-18')" data-type="R-18"></label> R-18（成人向け／性的表現を含む）画像を常に表示
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleSpoilerDisplayMode('R-18G')" data-type="R-18G"></label> R-18G（成人向け／グロテスク表現を含む）画像を常に表示
+          <dt><label class="toggle-button"><input type="checkbox" onchange="toggleSpoilerDisplayMode('sensitive')" data-type="sensitive"></label> その他のセンシティブ（成人向け以外の理由）な画像を常に表示
+          <dd>それぞれ、OFFの状態では、ワンクッション置いて（スポイラー／ぼかした状態）で表示されます。
+        </dl>
       </section>
-      <section class="form">
+      <TMPL_IF LOGIN_ID><section class="form">
         <h2>アカウント情報</h2>
         <form method="post" action="./">
           <input type="hidden" name="mode" value="option">
@@ -144,28 +161,44 @@
             <input type="submit" value="変更">
           </p>
         </form>
-      </section>
+      </section></TMPL_IF>
       <TMPL_IF OAUTH_MODE>
-      <!-- 何も出さない -->
+        <!-- 何も出さない -->
       <TMPL_ELSE>
-      <section class="form">
-      <h2>パスワード変更</h2>
-      <form method="post" action="./">
-        <input type="hidden" name="mode" value="passchange">
-        <p>
-          <label><span>現在のパスワード</span> <input type="password" name="password"></label>
-        </p>
-        <p>
-          <label><span>新しいパスワード</span> <input type="password" name="new_password" pattern="^[0-9A-Za-z\.\-\/]+$" title="半角英数字、『.』『-』『/』のみ"></label>
-        </p>
-        <p>
-          <label><span>新しいパスワード(確認)</span> <input type="password" name="new_password_confirm" pattern="^[0-9A-Za-z\.\-\/]+$" title="半角英数字、『.』『-』『/』のみ"></label>
-        </p>
-        <p>
-          <input type="submit" value="変更">
-        </p>
-      </form>
-      </section>
+        <TMPL_IF LOGIN_ID><section class="form">
+          <h2>パスワード変更</h2>
+          <form method="post" action="./">
+            <input type="hidden" name="mode" value="passchange">
+            <p>
+              <label><span>現在のパスワード</span> <input type="password" name="password"></label>
+            </p>
+            <p>
+              <label><span>新しいパスワード</span> <input type="password" name="new_password" pattern="^[0-9A-Za-z\.\-\/]+$" title="半角英数字、『.』『-』『/』のみ"></label>
+            </p>
+            <p>
+              <label><span>新しいパスワード(確認)</span> <input type="password" name="new_password_confirm" pattern="^[0-9A-Za-z\.\-\/]+$" title="半角英数字、『.』『-』『/』のみ"></label>
+            </p>
+            <p>
+              <input type="submit" value="変更">
+            </p>
+          </form>
+        </section><section class="form" id="delete-account">
+          <h2>アカウント削除</h2>
+          <p><button class="submit" onclick="document.querySelector('#delete-account > form').style.display = 'block'">アカウント削除</button></p>
+          <form method="post" action="./" style="display:none;">
+            <input type="hidden" name="mode" value="delete-account">
+            <p>
+              本当にアカウントを削除してもよろしいですか？<br>
+              <br>
+              アカウントを削除しても、現在保存されている各シートは<b>削除されません</b>。<br>
+              （閲覧／出力のみが可能なシートとして残ります）<br>
+              <br>
+              アカウントの削除を行う場合、<br>以下にパスワードを入力した後、「削除する」ボタンを押してください。
+            </p>
+            <p><label><span>パスワード</span> <input type="password" name="password"></label></p>
+            <p><input type="submit" value="削除する"></p>
+          </form>
+        </section></TMPL_IF>
       </TMPL_IF>
     </article>
   </TMPL_IF>
@@ -175,7 +208,7 @@
       <section class="form">
         <h2><span class="material-symbols-outlined bold">edit_note</span>コンバート作成</h2>
         <h3>URLから</h3>
-        <form method="get" action="./">
+        <form method="get" action="./" id="form-to-import-from-url">
           <input type="hidden" name="mode" value="convert">
           <p>
             入力したURLのデータを元にゆとシートⅡで新規作成します。<br>
@@ -191,6 +224,14 @@
             <input type="file" name="file" style="width:50%;" accept=".json,.txt" required><input type="submit" value="作成">
           </p>
         </form>
+        <hr>
+        <h3>クリップボードから</h3>
+        <div class="form">
+          <p>
+            クリップボードからURL/JSONを読み取り、ゆとシートⅡで新規作成します。<br>
+            <button class="submit" id="button-to-import-from-clipboard" disabled>作成</button>
+          </p>
+        </div>
       </section>
       <section class="form">
         <h2><span class="material-symbols-outlined bold">visibility</span>コンバートビュー</h2>
@@ -204,11 +245,11 @@
       <section class="form">
         <h3><span class="material-symbols-outlined bold">info</span>コンバート可能なキャラクターシート（URL）</h3>
         <dl>
-          <dt>キャラクター保管所 (SW2.x/nc/mgr/<ruby>GS<rt>ゴブスレ</ruby>)
+          <dt>キャラクター保管所 (対応なし)
           <dd>https://charasheet.vampire-blood.net/<i>[MD/ID]</i>
         </dl>
         <dl>
-          <dt>キャラクターシート倉庫 (nc/BLP)
+          <dt>キャラクターシート倉庫 (<ruby>MGR<rt>メタリックガーディアン</ruby>)
           <dd>http://character-sheets.appspot.com/<i>[システム名]</i>/edit.html?key=<i>[ID]</i>
         </dl>
         <TMPL_IF ConvertURLs><dl>
@@ -224,7 +265,7 @@
         <h3><span class="material-symbols-outlined bold">info</span>コンバートの仕様</h3>
         <section>
         <h4>データの変換</h4>
-        <p>
+        <p class="left">
           　基本的に、数値などは自動的に計算され直します。<br>
           　また、一部テキスト等もゆとシート向けに自動的に変換されます。<br>
           　一例を下記に示します。<br>
@@ -233,13 +274,13 @@
           <dt>全般
           <dd>半角⇔全角は適宜ゆとシートに合わせて変換。
           <dd>一部表記ぶれの統一（怒涛⇒怒濤、エンジェルハイロウ⇒エンジェルハィロゥなど）
-          <dt>nc
+          <dt>DX3rd
           <dd>キャラクター名及びコードネームが「AAA（BBB）」という形式の場合、（）内を自動的にルビにする。
         </dl>
         </section>
         <section>
         <h4>データの欠損</h4>
-        <p>
+        <p class="left">
           　ゆとシートの型に合わないなどの理由で、一部データが抜けることがあります。<br>
           　現在確認できるものを以下に示します。<br>
         </p>
@@ -251,14 +292,24 @@
           <dd>専用装飾品の選択が「HP」「MP」以外の場合
           <dd>騎獣データ（ゆとシートⅡでは別シート（魔物データ）に記載する運用を想定しています）
           
-          <dt>nc
+          <dt>DX3rd
           <dd>覚醒・衝動の名前が間違っている／対応できていない表記ぶれの場合（作成のみ）
 
-          <dt>mgr
+          <dt>AR2E
           <dd>スキル欄左端の項目
         </dl>
         <p style="text-align:right;border-top-width:1px;border-top-style:dotted">※（作成のみ）とある場合、コンバートビューの場合は欠落せず表示されます。</p>
         </section>
+      </section>
+    </article>
+    <script src="<TMPL_VAR coreDir>/skin/_common/js/form.js?<TMPL_VAR ver>"></script>
+  </TMPL_IF>
+  <!-- テキスト整形ルール -->
+  <TMPL_IF textRule>
+    <article id="edit-help">
+      <section class="form">
+        <h2>テキスト装飾・整形ルール</h2>
+        <TMPL_VAR textRule>
       </section>
     </article>
   </TMPL_IF>

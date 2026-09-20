@@ -2,7 +2,7 @@
 
 var output = output || {};
 
-output.generateCcfoliaJsonOfArianrhod2PC = (json, character, defaultPalette) => {
+output.generateCcfoliaJsonOfSRSPC = (json, character, defaultPalette) => {
   character.name = json.namePlate || json.characterName || json.aka;
 
   character.memo = '';
@@ -44,5 +44,60 @@ output.generateCcfoliaJsonOfArianrhod2PC = (json, character, defaultPalette) => 
     character.params.push(s);
   });
 
+  return character;
+};
+
+// ==========================================
+// ★新規追加：エネミー（魔物）用のココフォリア出力処理
+// ==========================================
+output.generateCcfoliaJsonOfSRSEnemy = (json, character, defaultPalette) => {
+  // 名前と個別名のマージ
+  character.name = json.namePlate || json.characterName || json.monsterName;
+  
+  character.memo = '';
+  character.memo += json.namePlate ? (json.characterName || json.monsterName) + "\n" : '';
+  character.memo += json.characterName ? "(" + json.monsterName + ")\n" : '';
+  
+  // 特殊能力（特技）の追加
+  if (json.skills) {
+    character.memo += "▽ 特殊能力\n" + json.skills.replace(/&lt;br&gt;/g, '\n') + "\n\n";
+  }
+
+  // ★新規追加：追加エリア（加護など）のループ出力
+  // extraNum が定義されている場合はそれを使用し、無い場合でも存在する限り自動探索する
+  let extraCount = Number(json.extraNum) || 0;
+  if (!extraCount) {
+    let i = 1;
+    while (json[`extra${i}Name`] || json[`extra${i}Text`]) {
+      extraCount = i;
+      i++;
+    }
+  }
+
+  for (let i = 1; i <= extraCount; i++) {
+    const extraName = json[`extra${i}Name`] || '追加項目';
+    const extraText = json[`extra${i}Text`] || '';
+    
+    // 内容が存在する場合のみメモ欄に出力
+    if (extraText) {
+      character.memo += `▽ ${extraName}\n` + extraText.replace(/&lt;br&gt;/g, '\n') + "\n\n";
+    }
+  }
+
+  // 解説の追加
+  if (json.description) {
+    character.memo += "▽ 解説\n" + json.description.replace(/&lt;br&gt;/g, '\n') + "\n";
+  }
+
+  // 重複防止用のチェックリストを作成
+  let addedParam = {};
+  character.params.forEach(p => { addedParam[p.label] = 1; });
+
+  // Perl側で生成されたデフォルトパレット（ステータスやボーナス等）をパラメータに追加
+  defaultPalette.parameters.forEach(s => {
+    if(addedParam[s.label]){ return; }
+    character.params.push(s);
+  });
+  
   return character;
 };

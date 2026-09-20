@@ -4,12 +4,10 @@ use strict;
 use utf8;
 use open ":utf8";
 
-my $mask = umask 0;
-
 my $mode = $::in{mode};
 
 if($mode eq 'register'){
-  if(!token_check($::in{_token})){ error('セッションの有効期限が切れたか、二重投稿です'); }
+  if(!checkToken($::in{_token})){ error('セッションの有効期限が切れたか、二重投稿です'); }
 
   if($set::registerkey && $set::registerkey ne $::in{registerkey}){ error('登録キーが間違っています。'); }
   if($::in{password} ne $::in{password_confirm}){ error('パスワードの確認入力が一致しません'); }
@@ -18,43 +16,47 @@ if($mode eq 'register'){
     if ($::in{password} =~ /[^0-9A-Za-z\.\-\/]/) { error('パスワードに使える文字は、半角の英数字とピリオド、ハイフン、スラッシュだけです'); }
   }
 
-  open (my $FH, '<', $set::userfile);
-  while (my $line = <$FH>){
+  open (my $READ, '<', $set::userfile);
+  while (my $line = <$READ>){
     if(index($line, "$::in{id}<") == 0){ error('そのIDは使用されています'); }
   }
-  close ($FH);
+  close ($READ);
 
-  sysopen (my $FH, $set::userfile, O_WRONLY | O_APPEND | O_CREAT, 0666);
-    print $FH $::in{id}."<>".&e_crypt($::in{password})."<>".decode('utf8', $::in{name})."<>".$::in{mail}."<>".time."<>\n";
-  close ($FH);
+  my $hash = encrypt($::in{password});
+  if($hash =~ /^\*/){ error('パスワードの暗号化に失敗しました'); }
+
+  appendFile($set::userfile, sub {
+    my ($WRITE) = @_;
+    print $WRITE $::in{id}."<>".$hash."<>".decode('utf8', $::in{name})."<>".$::in{mail}."<>".time."<>\n";
+  });
   
   if($set::player_dir){
     if (!-d $set::player_dir.$::in{id}){ mkdir $set::player_dir.$::in{id}; }
-    sysopen (my $FH, $set::player_dir.$::in{id}.'/data.cgi', O_WRONLY | O_APPEND | O_CREAT, 0666);
+    sysopen (my $FH, $set::player_dir.$::in{id}.'/data.cgi', O_WRONLY | O_APPEND | O_CREAT);
       print $FH "id<>".$::in{id}."\n";
       print $FH "name<>".decode('utf8',$::in{name})."\n";
     close ($FH);
   }
 
-  log_in($::in{id},$::in{password});
+  logIn($::in{id},$::in{password});
 }
 elsif($mode eq 'option'){
   my $LOGIN_ID = check;
-  
-  sysopen (my $FH, $set::userfile, O_RDWR);
-  flock($FH, 2);
-  my @list = <$FH>;
-  seek($FH, 0, 0);
-  foreach my $line (@list){
-    if(index($line, "$LOGIN_ID<") == 0){
-      my @data= split(/<>/, $line);
-      print $FH "$data[0]<>$data[1]<>".decode('utf8', $::in{name})."<>".$::in{mail}."<>\n";
-    }else{
-      print $FH $line;
+
+  overwriteFile($set::userfile, sub {
+    my ($READ, $WRITE) = @_;
+    foreach (<$READ>){
+      if(index($_, "$LOGIN_ID<") == 0){
+        my @data = split(/<>/, $_, -1);
+        @data[2] = decode('utf8', $::in{name});
+        @data[3] = $::in{mail};
+        print $WRITE join('<>', @data);
+      }
+      else {
+        print $WRITE $_;
+      }
     }
-  }
-  truncate($FH, tell($FH));
-  close($FH);
+  });
   
   our $set_message = '変更を保存しました。';
   require $set::lib_form;
@@ -68,27 +70,61 @@ elsif($mode eq 'passchange'){
   else {
     if ($::in{new_password} =~ /[^0-9A-Za-z\.\-\/]/) { error('パスワードに使える文字は、半角の英数字とピリオド、ハイフン、スラッシュだけです'); }
   }
+
+  my $newHash = encrypt($::in{password});
+  if($newHash =~ /^\*/){ error('新しいパスワードの暗号化に失敗しました'); }
   
   my $flag;
-  sysopen (my $FH, $set::userfile, O_RDWR);
-  flock($FH, 2);
-  my @list = <$FH>;
-  seek($FH, 0, 0);
-  foreach (@list){
-    my @data= split /<>/;
-    if ($data[0] eq $LOGIN_ID && c_crypt($::in{password},$data[1])){
-      print $FH "$data[0]<>".e_crypt($::in{new_password})."<>$data[2]<>$data[3]<>\n";
-      $flag = 1;
-    }else{
-      print $FH $_;
+  overwriteFile($set::userfile, sub {
+    my ($READ, $WRITE) = @_;
+    foreach (<$READ>){
+      if(index($_, "$LOGIN_ID<") == 0){
+        my @data = split(/<>/, $_, -1);
+        if (verifyCrypt($::in{password},$data[1])){
+          @data[1] = $newHash;
+          print $WRITE join('<>', @data);
+          $flag = 1;
+          next;
+        }
+      }
+      print $WRITE $_;
     }
-  }
-  truncate($FH, tell($FH));
-  close($FH);
+  });
   
   if(!$flag){ error('パスワードが間違っています'); }
   
   our $set_message = '変更を保存しました。';
   require $set::lib_form;
 }
+elsif($mode eq 'delete-account'){
+  my $LOGIN_ID = check;
+
+  unless(getKey($LOGIN_ID, $::in{password})){ error('401:ログイン状態でないか、パスワードが間違っています。') }
+
+  overwriteFile($set::userfile, sub {
+    my ($READ, $WRITE) = @_;
+    foreach (<$READ>){
+      if(index($_, "$LOGIN_ID<") == 0){
+        my @data = split(/<>/, $_, -1);
+        @data[2] = @data[3] = '';
+        print $WRITE "$LOGIN_ID<>DELETED<><><>\n";
+      }
+      else {
+        print $WRITE $_;
+      }
+    }
+  });
+
+  overwriteFile($set::login_users, sub {
+    my ($READ, $WRITE) = @_;
+    foreach (<$READ>) {
+      next if (index($_, "$LOGIN_ID<") == 0);
+      print $WRITE $_;
+    }
+  });
+
+  logOut();
+}
+
+
 1;
